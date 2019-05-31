@@ -29,6 +29,7 @@ class PwmGeneration
       static bool Tripped();
       static void SetOpmode(int);
       static void SetAmpnom(s32fp amp);
+      static void SetCurrents(s32fp id, s32fp iq);
       static void SetFslip(s32fp fslip);
       static void SetCurrentOffset(int offset1, int offset2);
       static void SetCurrentLimitThreshold(s32fp ocurlim);

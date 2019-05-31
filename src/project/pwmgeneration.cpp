@@ -28,6 +28,7 @@
 #include "digio.h"
 #include "anain.h"
 #include "my_math.h"
+#include "foc.h"
 
 #define SHIFT_180DEG (uint16_t)32768
 #define SHIFT_90DEG  (uint16_t)16384
@@ -48,9 +49,10 @@ static int opmode;
 static bool tripped;
 static s32fp ilofs[2];
 static uint16_t execTicks = 0;
+static s32fp idref = 0, iqref = 0;
 
 /*********/
-static s32fp ProcessCurrents();
+static s32fp ProcessCurrents(s32fp& id, s32fp& iq);
 static s32fp LimitCurrent();
 static void CalcNextAngleSync(int dir);
 static void CalcNextAngleAsync(int dir);
@@ -71,6 +73,12 @@ bool PwmGeneration::Tripped()
 void PwmGeneration::SetAmpnom(s32fp amp)
 {
    ampnom = amp;
+}
+
+void PwmGeneration::SetCurrents(s32fp id, s32fp iq)
+{
+   idref = id;
+   iqref = iq;
 }
 
 void PwmGeneration::SetFslip(s32fp _fslip)
@@ -166,9 +174,11 @@ extern "C" void pwm_timer_isr(void)
    {
       int dir = Param::GetInt(Param::dir);
       uint16_t dc[3];
+      s32fp id, iq;
 
       Encoder::UpdateRotorAngle(dir);
       s32fp ampNomLimited = ampnom; //LimitCurrent();
+      ProcessCurrents(id, iq);
 
       if (opmode == MOD_SINE)
          CalcNextAngleConstant(dir);
@@ -177,23 +187,25 @@ extern "C" void pwm_timer_isr(void)
       else
          CalcNextAngleAsync(dir);
 
-      ProcessCurrents();
+      id = FP_MUL((idref - id), Param::Get(Param::iackp));
+      iq = FP_MUL((iqref - iq), Param::Get(Param::iackp));
+      FOC::InvParkClarke(id, iq, angle);
 
-      uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
+      //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
 
-      SineCore::SetAmp(amp);
-      Param::SetInt(Param::amp, amp);
+      //SineCore::SetAmp(amp);
+      //Param::SetInt(Param::amp, amp);
       Param::SetFlt(Param::fstat, frq);
       Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
-      SineCore::Calc(angle);
+      //SineCore::Calc(angle);
 
       /* Match to PWM resolution */
-      dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
-      dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
-      dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;
+      //dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
+      //dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
+      //dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;
 
       /* Shut down PWM on zero voltage request */
-      if (0 == amp || 0 == dir)
+      if (/*0 == amp ||*/ 0 == dir)
       {
          timer_disable_break_main_output(PWM_TIMER);
       }
@@ -202,13 +214,23 @@ extern "C" void pwm_timer_isr(void)
          timer_enable_break_main_output(PWM_TIMER);
       }
 
+      for (int i = 0; i < 3; i++)
+      {
+         dc[i] = FOC::DutyCycles[i] + 32768;
+         dc[i] = MIN(64000, dc[i]);
+         dc[i] = MAX(1000, dc[i]);
+         dc[i] >>= shiftForTimer;
+         Param::SetInt((Param::PARAM_NUM)(Param::dc1+i), dc[i]);
+      }
+
       timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
       timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
       timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
    {
-      ProcessCurrents();
+      s32fp id, iq;
+      ProcessCurrents(id, iq);
       Charge();
    }
    else if (opmode == MOD_ACHEAT)
@@ -412,7 +434,7 @@ static s32fp GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain)
 static EdgeType CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, int& samples, s32fp prevRms)
 {
    const s32fp oneOverSqrt2 = FP_FROMFLT(0.707106781187);
-   int minSamples = pwmfrq / (4 * FP_TOINT(frq));
+   int minSamples = pwmfrq / (4 * FP_TOINT(frq) + 1);
    EdgeType edgeType = NoEdge;
 
    minSamples = MAX(10, minSamples);
@@ -441,7 +463,7 @@ static EdgeType CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, in
    return edgeType;
 }
 
-static s32fp ProcessCurrents()
+static s32fp ProcessCurrents(s32fp& id, s32fp& iq)
 {
    static s32fp currentMax[2];
    static int samples[2] = { 0 };
@@ -459,7 +481,7 @@ static s32fp ProcessCurrents()
    {
       Param::SetFlt(Param::il1rms, rms);
 
-      if (((angle + 40000) & 0xFFFF) > SHIFT_180DEG)
+      if (((angle + Param::GetInt(Param::dirdet)) & 0xFFFF) > SHIFT_180DEG)
          sign = edge == PosEdge ? -1 : 1;
       else
          sign = edge == NegEdge ? -1 : 1;
@@ -480,6 +502,12 @@ static s32fp ProcessCurrents()
 
    s32fp ilMax = sign * GetIlMax(il1, il2);
 
+   FOC::ParkClarke(il1, il2, angle);
+   id = FOC::id;
+   iq = FOC::iq;
+
+   Param::SetFlt(Param::id, FOC::id);
+   Param::SetFlt(Param::iq, FOC::iq);
    Param::SetFlt(Param::il1, il1);
    Param::SetFlt(Param::il2, il2);
    Param::SetFlt(Param::ilmax, ilMax);

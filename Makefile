@@ -38,7 +38,7 @@ CPPFLAGS    = -Os -Wall -Wextra -Iinclude -Iinclude/generic -Iinclude/project -I
 		 -ffunction-sections -fdata-sections -fno-builtin -fno-rtti -fno-exceptions -fno-unwind-tables -mcpu=cortex-m3 -mthumb
 LDSCRIPT	= $(BINARY).ld
 LDFLAGS  = -Llibopencm3/lib -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections,-Map,linker.map
-OBJSL		= $(BINARY).o hwinit.o stm32scheduler.o params.o terminal.o terminal_prj.o \
+OBJSL		= $(BINARY).o foc.o hwinit.o stm32scheduler.o params.o terminal.o terminal_prj.o \
            my_string.o digio.o sine_core.o my_fp.o fu.o inc_encoder.o printf.o anain.o \
            temp_meas.o param_save.o throttle.o errormessage.o stm32_can.o pwmgeneration.o
 OBJS     = $(subst $(space),$(space)$(OUT_DIR)/, $(OBJSL))

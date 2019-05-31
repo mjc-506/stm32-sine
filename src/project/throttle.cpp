@@ -33,6 +33,7 @@ s32fp Throttle::speedkp;
 int Throttle::speedflt;
 int Throttle::speedFiltered;
 s32fp Throttle::idleThrotLim;
+s32fp Throttle::potnomFiltered;
 int Throttle::throtmax;
 int Throttle::brkPedalRamp;
 int Throttle::brkRamped;
@@ -45,6 +46,7 @@ s32fp Throttle::udcmax;
 s32fp Throttle::idcmin;
 s32fp Throttle::idcmax;
 s32fp Throttle::iacmax;
+s32fp Throttle::iackp;
 
 bool Throttle::CheckAndLimitRange(int* potval, int potIdx)
 {
@@ -92,10 +94,10 @@ bool Throttle::CheckDualThrottle(int* potval, int pot2val)
    return true;
 }
 
-int Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
+s32fp Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
 {
-   int potnom;
-   int scaledBrkMax = brkpedal ? brknompedal : brkmax;
+   s32fp potnom;
+   s32fp scaledBrkMax = brkpedal ? brknompedal : brkmax;
 
    if (pot2val > potmin[1])
    {
@@ -104,11 +106,11 @@ int Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
       scaledBrkMax = -1 + (scaledBrkMax * potnom) / 100;
    }
 
-   potnom = potval - potmin[0];
+   potnom = FP_FROMINT(potval - potmin[0]);
    potnom = ((100 + brknom) * potnom) / (potmax[0] - potmin[0]);
-   potnom -= brknom;
+   potnom -= FP_FROMINT(brknom);
 
-   if (potnom > 0)
+   /*if (potnom > 0)
    {
       throttleRamped = RAMPUP(throttleRamped, potnom, throttleRamp);
       potnom = (throttleRamped * throtmax) / 100;
@@ -116,7 +118,7 @@ int Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
    else
    {
       throttleRamped = 0;
-   }
+   }*/
 
    if (potnom < 0)
    {
@@ -125,38 +127,38 @@ int Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
 
    if (brkpedal || potnom < 0)
    {
-      brkRamped = RAMPDOWN(brkRamped, scaledBrkMax, brkPedalRamp);
-      potnom = brkRamped;
+      //brkRamped = RAMPDOWN(brkRamped, scaledBrkMax, brkPedalRamp);
+      potnom = scaledBrkMax;
    }
-   else
+   /*else
    {
       brkRamped = MIN(0, potnom); //reset ramp
-   }
+   }*/
 
    return potnom;
 }
 
-int Throttle::CalcIdleSpeed(int speed)
+s32fp Throttle::CalcIdleSpeed(int speed)
 {
    int speederr = idleSpeed - speed;
-   return FP_TOINT(MIN(idleThrotLim, speedkp * speederr));
+   return MIN(idleThrotLim, speedkp * speederr);
 }
 
-int Throttle::CalcCruiseSpeed(int speed)
+s32fp Throttle::CalcCruiseSpeed(int speed)
 {
    speedFiltered = IIRFILTER(speedFiltered, speed, speedflt);
    int speederr = cruiseSpeed - speedFiltered;
-   return FP_TOINT(MAX(FP_FROMINT(brkmax), MIN(FP_FROMINT(100), speedkp * speederr)));
+   return MAX(FP_FROMINT(brkmax), MIN(FP_FROMINT(100), speedkp * speederr));
 }
 
-bool Throttle::TemperatureDerate(s32fp tmphs, int& finalSpnt)
+bool Throttle::TemperatureDerate(s32fp tmphs, s32fp& finalSpnt)
 {
-   int limit = 0;
+   s32fp limit = 0;
 
    if (tmphs <= TMPHS_MAX)
-      limit = 100;
+      limit = FP_FROMINT(100);
    else if (tmphs < (TMPHS_MAX + FP_FROMINT(2)))
-      limit = 50;
+      limit = FP_FROMINT(50);
 
    if (finalSpnt >= 0)
       finalSpnt = MIN(finalSpnt, limit);
@@ -166,7 +168,7 @@ bool Throttle::TemperatureDerate(s32fp tmphs, int& finalSpnt)
    return limit < 100;
 }
 
-void Throttle::BmsLimitCommand(int& finalSpnt, bool dinbms)
+void Throttle::BmsLimitCommand(s32fp& finalSpnt, bool dinbms)
 {
    if (dinbms)
    {
@@ -177,30 +179,30 @@ void Throttle::BmsLimitCommand(int& finalSpnt, bool dinbms)
    }
 }
 
-void Throttle::UdcLimitCommand(int& finalSpnt, s32fp udc)
+void Throttle::UdcLimitCommand(s32fp& finalSpnt, s32fp udc)
 {
    if (finalSpnt >= 0)
    {
       s32fp udcErr = udc - udcmin;
-      int res = FP_TOINT(udcErr * 5);
+      s32fp res = udcErr * 5;
       res = MAX(0, res);
       finalSpnt = MIN(finalSpnt, res);
    }
    else
    {
       s32fp udcErr = udc - udcmax;
-      int res = FP_TOINT(udcErr * 5);
+      s32fp res = udcErr * 5;
       res = MIN(0, res);
       finalSpnt = MAX(finalSpnt, res);
    }
 }
 
-void Throttle::IdcLimitCommand(int& finalSpnt, s32fp idc)
+void Throttle::IdcLimitCommand(s32fp& finalSpnt, s32fp idc)
 {
    if (finalSpnt >= 0)
    {
       s32fp idcerr = idcmax - idc;
-      int res = FP_TOINT(idcerr * 10);
+      s32fp res = idcerr * 10;
 
       res = MAX(0, res);
       finalSpnt = MIN(res, finalSpnt);
@@ -208,28 +210,26 @@ void Throttle::IdcLimitCommand(int& finalSpnt, s32fp idc)
    else
    {
       s32fp idcerr = idcmin - idc;
-      int res = FP_TOINT(idcerr * 10);
+      s32fp res = idcerr * 10;
 
       res = MIN(0, res);
       finalSpnt = MAX(res, finalSpnt);
    }
 }
 
-void Throttle::IacLimitCommand(int& finalSpnt, s32fp iac)
+void Throttle::IacLimitCommand(s32fp& finalSpnt, s32fp iac)
 {
+   s32fp iacspnt = FP_MUL(iacmax, finalSpnt) / 100;
+   s32fp iacerr = iacspnt - iac;
+   s32fp res = FP_MUL(iacerr, iackp);
+
    if (finalSpnt >= 0)
    {
-      s32fp iacerr = iacmax - iac;
-      int res = FP_TOINT(iacerr * 10);
-
       res = MAX(0, res);
       finalSpnt = MIN(res, finalSpnt);
    }
    else
    {
-      s32fp iacerr = iacmax - iac;
-      int res = FP_TOINT(iacerr * 10);
-
       res = MIN(0, res);
       finalSpnt = MAX(res, finalSpnt);
    }

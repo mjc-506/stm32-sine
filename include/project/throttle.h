@@ -29,14 +29,14 @@ class Throttle
    public:
       static bool CheckAndLimitRange(int* potval, int potIdx);
       static bool CheckDualThrottle(int* potval, int pot2val);
-      static int CalcThrottle(int potval, int pot2val, bool brkpedal);
-      static int CalcIdleSpeed(int speed);
-      static int CalcCruiseSpeed(int speed);
-      static bool TemperatureDerate(s32fp tmphs, int& finalSpnt);
-      static void BmsLimitCommand(int& finalSpnt, bool dinbms);
-      static void UdcLimitCommand(int& finalSpnt, s32fp udc);
-      static void IdcLimitCommand(int& finalSpnt, s32fp idc);
-      static void IacLimitCommand(int& finalSpnt, s32fp iac);
+      static s32fp CalcThrottle(int potval, int pot2val, bool brkpedal);
+      static s32fp CalcIdleSpeed(int speed);
+      static s32fp CalcCruiseSpeed(int speed);
+      static bool TemperatureDerate(s32fp tmphs, s32fp& finalSpnt);
+      static void BmsLimitCommand(s32fp& finalSpnt, bool dinbms);
+      static void UdcLimitCommand(s32fp& finalSpnt, s32fp udc);
+      static void IdcLimitCommand(s32fp& finalSpnt, s32fp idc);
+      static void IacLimitCommand(s32fp& finalSpnt, s32fp iac);
       static int potmin[2];
       static int potmax[2];
       static int brknom;
@@ -59,9 +59,11 @@ class Throttle
       static s32fp idcmin;
       static s32fp idcmax;
       static s32fp iacmax;
+      static s32fp iackp;
 
    private:
       static int speedFiltered;
+      static s32fp potnomFiltered;
       static int brkRamped;
       static int throttleRamped;
 };

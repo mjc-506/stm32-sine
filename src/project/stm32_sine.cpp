@@ -51,6 +51,7 @@ HWREV hwRev; //Hardware variant of board we are running on
 
 //Precise control of executing the boost controller
 static bool runChargeControl = false;
+static s32fp slowThrottleCommmand = 0;
 static Stm32Scheduler* scheduler;
 
 static void PostErrorIfRunning(ERROR_MESSAGE_NUM err)
@@ -207,11 +208,10 @@ static void GetDigInputs()
    }
 }
 
-static void CalcAmpAndSlip()
+static void CalcAmpAndSlip(s32fp potnom)
 {
    s32fp fslipmin = Param::Get(Param::fslipmin);
    s32fp ampmin = Param::Get(Param::ampmin);
-   s32fp potnom = Param::Get(Param::potnom);
    s32fp slipstart = Param::Get(Param::slipstart);
    s32fp ampnom;
    s32fp fslipspnt = 0;
@@ -262,7 +262,7 @@ static void CalcAmpAndSlip()
 
       if (Encoder::IsSyncMode())
       {
-         ampnom = ampmin + FP_MUL(ampmin, potnom) / 100;
+         ampnom = ampmin + FP_MUL(ampmin, -potnom) / 100;
          //ampnom = ampmin + FP_DIV(FP_MUL((FP_FROMINT(100) - ampmin), -potnom), FP_FROMINT(100));
          MotorVoltage::SetMinFrqMode(MotorVoltage::RAMPDOWN);
       }
@@ -287,10 +287,10 @@ static void CalcAmpAndSlip()
    //anticipate sudden changes by filtering
    s32fp ampnomLast = Param::Get(Param::ampnom);
    s32fp fslipLast = Param::Get(Param::fslipspnt);
-   ampnomLast = IIRFILTER(ampnomLast, ampnom, 4);
-   fslipLast = IIRFILTER(fslipLast, fslipspnt, 4);
-   Param::Set(Param::ampnom, ampnomLast);
-   Param::Set(Param::fslipspnt, fslipLast);
+   ampnomLast = IIRFILTER(ampnomLast, ampnom, Param::GetInt(Param::iacflt));
+   fslipLast = IIRFILTER(fslipLast, fslipspnt, Param::GetInt(Param::iacflt));
+   Param::Set(Param::ampnom, ampnom);
+   Param::Set(Param::fslipspnt, fslipspnt);
 }
 
 static void GetTemps(s32fp& tmphs, s32fp &tmpm)
@@ -437,7 +437,7 @@ static s32fp ProcessUdc()
       ErrorMessage::Post(ERR_OVERVOLTAGE);
    }
 
-   if (udcfp < (udcsw / 2) && rtc_get_counter_val() > PRECHARGE_TIMEOUT)
+   if (udcfp < (udcsw / 2) && rtc_get_counter_val() > PRECHARGE_TIMEOUT && DigIo::Get(Pin::prec_out))
    {
       DigIo::Set(Pin::err_out);
       DigIo::Clear(Pin::prec_out);
@@ -463,7 +463,7 @@ static s32fp ProcessUdc()
    return udcfp;
 }
 
-static int GetUserThrottleCommand()
+static s32fp GetUserThrottleCommand()
 {
    int potval, pot2val;
    bool brake = Param::GetBool(Param::din_brake);
@@ -520,21 +520,19 @@ static int GetUserThrottleCommand()
    return Throttle::CalcThrottle(potval, pot2val, brake);
 }
 
-static void GetCruiseCreepCommand(int& finalSpnt, int throtSpnt)
+static void GetCruiseCreepCommand(s32fp& finalSpnt, int throtSpnt)
 {
    bool brake = Param::GetBool(Param::din_brake);
    int cruiseSpnt = Throttle::CalcCruiseSpeed(Encoder::GetSpeed());
    int idleSpnt = Throttle::CalcIdleSpeed(Encoder::GetSpeed());
+
+   finalSpnt = throtSpnt; //assume no regulation
 
    if (Param::GetInt(Param::idlemode) == IDLE_MODE_ALWAYS ||
       (Param::GetInt(Param::idlemode) == IDLE_MODE_NOBRAKE && !brake) ||
       (Param::GetInt(Param::idlemode) == IDLE_MODE_CRUISE && !brake && Param::GetBool(Param::din_cruise)))
    {
       finalSpnt = MAX(throtSpnt, idleSpnt);
-   }
-   else
-   {
-      finalSpnt = throtSpnt;
    }
 
    if (Throttle::cruiseSpeed > 0 && Throttle::cruiseSpeed > Throttle::idleSpeed)
@@ -548,7 +546,7 @@ static void GetCruiseCreepCommand(int& finalSpnt, int throtSpnt)
 
 static void ProcessThrottle()
 {
-   int throtSpnt, finalSpnt;
+   s32fp throtSpnt, finalSpnt;
 
    if ((int)Encoder::GetSpeed() < Param::GetInt(Param::throtramprpm))
       Throttle::throttleRamp = Param::GetInt(Param::throtramp);
@@ -557,9 +555,6 @@ static void ProcessThrottle()
 
    throtSpnt = GetUserThrottleCommand();
    GetCruiseCreepCommand(finalSpnt, throtSpnt);
-
-   Throttle::iacmax = (Param::Get(Param::iacmax) * finalSpnt) / 100;
-   Throttle::IacLimitCommand(finalSpnt, Param::Get(Param::ilmax));
 
    if (hwRev != HW_TESLA)
       Throttle::BmsLimitCommand(finalSpnt, Param::GetBool(Param::din_bms));
@@ -573,7 +568,12 @@ static void ProcessThrottle()
       ErrorMessage::Post(ERR_TMPHSMAX);
    }
 
-   Param::SetInt(Param::potnom, finalSpnt);
+   slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, Param::GetInt(Param::brkpedalramp));
+
+   Param::SetFlt(Param::potnom, slowThrottleCommmand);
+   s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
+   s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
+   PwmGeneration::SetCurrents(id, iq);
 }
 
 static void SetContactorsOffState()
@@ -618,7 +618,7 @@ static void Ms10Task(void)
 
    if (MOD_RUN == opmode)
    {
-      CalcAmpAndSlip();
+      CalcAmpAndSlip(slowThrottleCommmand);
    }
    else if (MOD_OFF == opmode)
    {
@@ -726,23 +726,30 @@ static void Ms1Task(void)
 {
    static s32fp ilFlt = 0;
    static s32fp iSpntFlt = 0;
-   s32fp il1 = Param::Get(Param::il1);
-   s32fp il2 = Param::Get(Param::il2);
-   s32fp ilMax;
+   static s32fp iacflt = 0;
    int opmode = Param::GetInt(Param::opmode);
+   //s32fp throttleCommand = slowThrottleCommmand;
 
-   il1 = ABS(il1);
-   il2 = ABS(il2);
-   ilMax = MAX(il1, il2);
+   //iacflt = IIRFILTER(iacflt, Param::Get(Param::ilmax), Param::GetInt(Param::iacflt));
+
+   //Throttle::IacLimitCommand(throttleCommand, iacflt);
+   //Param::SetFlt(Param::potnom, throttleCommand);
 
    ErrorMessage::SetTime(rtc_get_counter_val());
-
    GenerateSpeedFrequencyOutput();
 
    if (runChargeControl)
    {
+      s32fp il1 = Param::Get(Param::il1);
+      s32fp il2 = Param::Get(Param::il2);
+      s32fp ilMax;
+
+      il1 = ABS(il1);
+      il2 = ABS(il2);
+      ilMax = MAX(il1, il2);
+
       s32fp chargeCurSpnt = Param::Get(Param::chargecur) << 8;
-      int dummy = 50;
+      s32fp dummy = 50;
 
       if (Throttle::TemperatureDerate(Param::Get(Param::tmphs), dummy))
          chargeCurSpnt = 0;
@@ -807,6 +814,8 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
       Throttle::udcmax = FP_MUL(Param::Get(Param::udcmax), FP_FROMFLT(1.05));
       Throttle::idcmin = Param::Get(Param::idcmin);
       Throttle::idcmax = Param::Get(Param::idcmax);
+      Throttle::iacmax = Param::Get(Param::iacmax);
+      Throttle::iackp = Param::Get(Param::iackp);
 
       if (Param::GetInt(Param::pwmfunc) == PWM_FUNC_SPEEDFRQ)
          gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO9);
