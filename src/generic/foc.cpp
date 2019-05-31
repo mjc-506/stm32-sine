@@ -29,7 +29,6 @@ static const s32fp sqrt3inv2 = 2*sqrt3inv1; //2/sqrt(2)
 static const s32fp sqrt3ov2 = (SQRT3 / 2);
 static const s32fp sqrt32 = FP_FROMFLT(1.224744871); //sqrt(3/2)
 static const s32fp twoOv3 = FP_FROMFLT(0.666666666);
-static int dir = 1;
 
 s32fp FOC::id;
 s32fp FOC::iq;
@@ -41,14 +40,14 @@ uint32_t FOC::DutyCycles[3];
   */
 void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
 {
-   s32fp sin = dir * SineCore::Sine(angle);
+   s32fp sin = SineCore::Sine(angle);
    s32fp cos = SineCore::Cosine(angle);
    //Clarke transformation
    s32fp ia = il1;
    s32fp ib = FP_MUL(sqrt3inv1, il1) + FP_MUL(sqrt3inv2, il2);
    //Park transformation
-   s32fp idl = FP_MUL(sqrt32, (FP_MUL(cos, ia) + FP_MUL(sin, ib)));
-   s32fp iql = FP_MUL(sqrt32, (-FP_MUL(sin, ia) + FP_MUL(cos, ib)));
+   s32fp idl = FP_MUL(cos, ia) + FP_MUL(sin, ib);
+   s32fp iql = FP_MUL(cos, ib) - FP_MUL(sin, ia);
 
    id = IIRFILTER(id, idl, 2);
    iq = IIRFILTER(iq, iql, 2);
@@ -56,19 +55,14 @@ void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
 
 void FOC::InvParkClarke(s32fp id, s32fp iq, uint16_t angle)
 {
-   s32fp sin = dir * SineCore::Sine(angle);
+   s32fp sin = SineCore::Sine(angle);
    s32fp cos = SineCore::Cosine(angle);
 
    //Inverse Park transformation
-   s32fp ia = FP_MUL(sqrt32, (FP_MUL(cos, id) + FP_MUL(sin, iq)));
-   s32fp ib = FP_MUL(sqrt32, (-FP_MUL(sin, id) + FP_MUL(cos, iq)));
+   s32fp ia = FP_MUL(cos, id) - FP_MUL(sin, iq);
+   s32fp ib = FP_MUL(cos, iq) + FP_MUL(sin, id);
    //Inverse Clarke transformation
    DutyCycles[0] = ia;
    DutyCycles[1] = FP_MUL(-FP_FROMFLT(0.5), ia) + FP_MUL(sqrt3ov2, ib);
    DutyCycles[2] = FP_MUL(-FP_FROMFLT(0.5), ia) - FP_MUL(sqrt3ov2, ib);
-}
-
-void FOC::SetDirection(int _dir)
-{
-   dir = _dir;
 }
