@@ -24,15 +24,16 @@
 
 #define SQRT3           FP_FROMFLT(1.732050807568877293527446315059)
 
-static const s32fp sqrt3inv1 = FP_FROMFLT(0.57735026919); //1/sqrt(2)
+static const s32fp sqrt3inv1 = FP_FROMFLT(0.57735026919); //1/sqrt(3)
 static const s32fp sqrt3inv2 = 2*sqrt3inv1; //2/sqrt(2)
 static const s32fp sqrt3ov2 = (SQRT3 / 2);
-static const s32fp sqrt32 = FP_FROMFLT(1.224744871); //sqrt(3/2)
-static const s32fp twoOv3 = FP_FROMFLT(0.666666666);
+static const s32fp zeroOffset = FP_FROMINT(1);
+static int32_t minPulse = 1000;
+static int32_t maxPulse = FP_FROMFLT(2) - 1000;
 
 s32fp FOC::id;
 s32fp FOC::iq;
-uint32_t FOC::DutyCycles[3];
+int32_t FOC::DutyCycles[3];
 
 /** @brief Transform current to rotor system using Clarke and Park transformation
   * @post flux producing (id) and torque producing (iq) current are written
@@ -65,4 +66,23 @@ void FOC::InvParkClarke(s32fp id, s32fp iq, uint16_t angle)
    DutyCycles[0] = ia;
    DutyCycles[1] = FP_MUL(-FP_FROMFLT(0.5), ia) + FP_MUL(sqrt3ov2, ib);
    DutyCycles[2] = FP_MUL(-FP_FROMFLT(0.5), ia) - FP_MUL(sqrt3ov2, ib);
+
+   int32_t offset = SineCore::CalcSVPWMOffset(DutyCycles[0], DutyCycles[1], DutyCycles[2]);
+
+   for (int i = 0; i < 3; i++)
+   {
+      /* 4. subtract it from all 3 phases -> no difference in phase-to-phase voltage */
+      DutyCycles[i] -= offset;
+      /* Shift above 0 */
+      DutyCycles[i] += zeroOffset;
+      /* Short pulse supression */
+      if (DutyCycles[i] < minPulse)
+      {
+         DutyCycles[i] = 0U;
+      }
+      else if (DutyCycles[i] > maxPulse)
+      {
+         DutyCycles[i] = FP_FROMINT(1);
+      }
+   }
 }

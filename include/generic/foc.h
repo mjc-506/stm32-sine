@@ -11,7 +11,7 @@ class FOC
       static void InvParkClarke(s32fp id, s32fp iq, uint16_t angle);
       static s32fp id;
       static s32fp iq;
-      static uint32_t DutyCycles[3];
+      static int32_t DutyCycles[3];
 
    protected:
    private:

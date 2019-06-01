@@ -178,7 +178,6 @@ extern "C" void pwm_timer_isr(void)
 
       Encoder::UpdateRotorAngle(dir);
       s32fp ampNomLimited = ampnom; //LimitCurrent();
-      ProcessCurrents(id, iq);
 
       if (opmode == MOD_SINE)
          CalcNextAngleConstant(dir);
@@ -187,6 +186,7 @@ extern "C" void pwm_timer_isr(void)
       else
          CalcNextAngleAsync(dir);
 
+      ProcessCurrents(id, iq);
       id = FP_MUL((idref - id), Param::Get(Param::iackp));
       iq = FP_MUL((iqref - iq), Param::Get(Param::iackp));
       FOC::InvParkClarke(id, iq, angle);
@@ -200,9 +200,9 @@ extern "C" void pwm_timer_isr(void)
       //SineCore::Calc(angle);
 
       /* Match to PWM resolution */
-      //dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
-      //dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
-      //dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;
+      /*dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
+      dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
+      dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;*/
 
       /* Shut down PWM on zero voltage request */
       if (/*0 == amp ||*/ 0 == dir)
@@ -216,10 +216,7 @@ extern "C" void pwm_timer_isr(void)
 
       for (int i = 0; i < 3; i++)
       {
-         dc[i] = FOC::DutyCycles[i] + 32768;
-         dc[i] = MIN(64000, dc[i]);
-         dc[i] = MAX(1000, dc[i]);
-         dc[i] >>= shiftForTimer;
+         dc[i] = FOC::DutyCycles[i] >> shiftForTimer;
          Param::SetInt((Param::PARAM_NUM)(Param::dc1+i), dc[i]);
       }
 

@@ -173,7 +173,7 @@ static void MapCan(char *arg)
          printf("Max message count reached\r\n");
          break;
       default:
-         printf("CAN map successful, %d message%s active\r\n", result, result > 1 ? "s" : "");
+         printf("CAN map successful, %d messages active\r\n", result, result > 1 ? "s" : "");
    }
 }
 
