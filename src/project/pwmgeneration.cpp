@@ -35,7 +35,6 @@
 #define FRQ_TO_ANGLE(frq) FP_TOINT((frq << SineCore::BITS) / pwmfrq)
 #define DIGIT_TO_DEGREE(a) FP_FROMINT(angle) / (65536 / 360)
 
-enum EdgeType { NoEdge, PosEdge, NegEdge };
 
 static uint8_t  pwmdigits;
 static uint16_t pwmfrq;
@@ -52,13 +51,81 @@ static uint16_t execTicks = 0;
 static s32fp idref = 0, iqref = 0;
 
 /*********/
-static s32fp ProcessCurrents(s32fp& id, s32fp& iq);
+/*static s32fp ProcessCurrents(s32fp& id, s32fp& iq);
 static s32fp LimitCurrent();
 static void CalcNextAngleSync(int dir);
 static void CalcNextAngleAsync(int dir);
 static void CalcNextAngleConstant(int dir);
 static void Charge();
-static void AcHeat();
+static void AcHeat();*/
+
+void PwmGeneration::Run()
+{
+   if (opmode == MOD_MANUAL || opmode == MOD_RUN || opmode == MOD_SINE)
+   {
+      int dir = Param::GetInt(Param::dir);
+      uint16_t dc[3];
+      s32fp id, iq;
+
+      Encoder::UpdateRotorAngle(dir);
+      s32fp ampNomLimited = ampnom; //LimitCurrent();
+
+      if (opmode == MOD_SINE)
+         CalcNextAngleConstant(dir);
+      else if (Encoder::IsSyncMode())
+         CalcNextAngleSync(dir);
+      else
+         CalcNextAngleAsync(dir);
+
+      ProcessCurrents(id, iq);
+      id = FP_MUL((idref - id), Param::Get(Param::iackp));
+      iq = FP_MUL((iqref - iq), Param::Get(Param::iackp));
+      FOC::InvParkClarke(id, iq, angle);
+
+      //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
+
+      //SineCore::SetAmp(amp);
+      //Param::SetInt(Param::amp, amp);
+      Param::SetFlt(Param::fstat, frq);
+      Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
+      //SineCore::Calc(angle);
+
+      /* Match to PWM resolution */
+      /*dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
+      dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
+      dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;*/
+
+      /* Shut down PWM on zero voltage request */
+      if (/*0 == amp ||*/ 0 == dir)
+      {
+         timer_disable_break_main_output(PWM_TIMER);
+      }
+      else
+      {
+         timer_enable_break_main_output(PWM_TIMER);
+      }
+
+      for (int i = 0; i < 3; i++)
+      {
+         dc[i] = FOC::DutyCycles[i] >> shiftForTimer;
+         Param::SetInt((Param::PARAM_NUM)(Param::dc1+i), dc[i]);
+      }
+
+      timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
+      timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
+      timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+   }
+   else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
+   {
+      s32fp id, iq;
+      ProcessCurrents(id, iq);
+      Charge();
+   }
+   else if (opmode == MOD_ACHEAT)
+   {
+      AcHeat();
+   }
+}
 
 uint16_t PwmGeneration::GetAngle()
 {
@@ -170,70 +237,7 @@ extern "C" void pwm_timer_isr(void)
    /* Clear interrupt pending flag */
    timer_clear_flag(PWM_TIMER, TIM_SR_UIF);
 
-   if (opmode == MOD_MANUAL || opmode == MOD_RUN || opmode == MOD_SINE)
-   {
-      int dir = Param::GetInt(Param::dir);
-      uint16_t dc[3];
-      s32fp id, iq;
-
-      Encoder::UpdateRotorAngle(dir);
-      s32fp ampNomLimited = ampnom; //LimitCurrent();
-
-      if (opmode == MOD_SINE)
-         CalcNextAngleConstant(dir);
-      else if (Encoder::IsSyncMode())
-         CalcNextAngleSync(dir);
-      else
-         CalcNextAngleAsync(dir);
-
-      ProcessCurrents(id, iq);
-      id = FP_MUL((idref - id), Param::Get(Param::iackp));
-      iq = FP_MUL((iqref - iq), Param::Get(Param::iackp));
-      FOC::InvParkClarke(id, iq, angle);
-
-      //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
-
-      //SineCore::SetAmp(amp);
-      //Param::SetInt(Param::amp, amp);
-      Param::SetFlt(Param::fstat, frq);
-      Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
-      //SineCore::Calc(angle);
-
-      /* Match to PWM resolution */
-      /*dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
-      dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
-      dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;*/
-
-      /* Shut down PWM on zero voltage request */
-      if (/*0 == amp ||*/ 0 == dir)
-      {
-         timer_disable_break_main_output(PWM_TIMER);
-      }
-      else
-      {
-         timer_enable_break_main_output(PWM_TIMER);
-      }
-
-      for (int i = 0; i < 3; i++)
-      {
-         dc[i] = FOC::DutyCycles[i] >> shiftForTimer;
-         Param::SetInt((Param::PARAM_NUM)(Param::dc1+i), dc[i]);
-      }
-
-      timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
-      timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
-      timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
-   }
-   else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
-   {
-      s32fp id, iq;
-      ProcessCurrents(id, iq);
-      Charge();
-   }
-   else if (opmode == MOD_ACHEAT)
-   {
-      AcHeat();
-   }
+   PwmGeneration::Run();
 
    int time = timer_get_counter(PWM_TIMER) - start;
    execTicks = ABS(time);
@@ -284,7 +288,7 @@ void PwmGeneration::SetCurrentLimitThreshold(s32fp ocurlim)
 
 
 /*----- Private methods ----------------------------------------- */
-static void CalcNextAngleSync(int dir)
+void PwmGeneration::CalcNextAngleSync(int dir)
 {
    if (Encoder::SeenNorthSignal())
    {
@@ -312,7 +316,7 @@ static void CalcNextAngleSync(int dir)
    }
 }
 
-static void CalcNextAngleAsync(int dir)
+void PwmGeneration::CalcNextAngleAsync(int dir)
 {
    static uint16_t slipAngle = 0;
    uint32_t polePairs = Param::GetInt(Param::polepairs);
@@ -326,7 +330,7 @@ static void CalcNextAngleAsync(int dir)
    angle = polePairs * rotorAngle + slipAngle;
 }
 
-static void CalcNextAngleConstant(int dir)
+void PwmGeneration::CalcNextAngleConstant(int dir)
 {
    frq = fslip;
    angle += dir * slipIncr;
@@ -334,7 +338,7 @@ static void CalcNextAngleConstant(int dir)
    if (frq < 0) frq = 0;
 }
 
-static void Charge()
+void PwmGeneration::Charge()
 {
    int dc = ampnom * (1 << pwmdigits);
    dc = FP_TOINT(dc) / 100;
@@ -349,7 +353,7 @@ static void Charge()
    timer_set_oc_value(PWM_TIMER, TIM_OC2, dc);
 }
 
-static void AcHeat()
+void PwmGeneration::AcHeat()
 {
    //We need to make sure the negative output is NEVER permanently on.
    if (ampnom < FP_FROMFLT(20))
@@ -406,7 +410,7 @@ void PwmGeneration::PwmInit()
    return ampNomLimited;
 }*/
 
-static s32fp GetIlMax(s32fp il1, s32fp il2)
+s32fp PwmGeneration::GetIlMax(s32fp il1, s32fp il2)
 {
    s32fp il3 = -il1 - il2;
    s32fp offset = SineCore::CalcSVPWMOffset(il1, il2, il3) / 2;
@@ -421,14 +425,14 @@ static s32fp GetIlMax(s32fp il1, s32fp il2)
    return ilMax;
 }
 
-static s32fp GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain)
+s32fp PwmGeneration::GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain)
 {
    s32fp il = FP_FROMINT(AnaIn::Get(input));
    il -= offset;
    return FP_DIV(il, gain);
 }
 
-static EdgeType CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, int& samples, s32fp prevRms)
+PwmGeneration::EdgeType PwmGeneration::CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, int& samples, s32fp prevRms)
 {
    const s32fp oneOverSqrt2 = FP_FROMFLT(0.707106781187);
    int minSamples = pwmfrq / (4 * FP_TOINT(frq) + 1);
@@ -460,7 +464,7 @@ static EdgeType CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, in
    return edgeType;
 }
 
-static s32fp ProcessCurrents(s32fp& id, s32fp& iq)
+s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
 {
    static s32fp currentMax[2];
    static int samples[2] = { 0 };
@@ -499,7 +503,7 @@ static s32fp ProcessCurrents(s32fp& id, s32fp& iq)
 
    s32fp ilMax = sign * GetIlMax(il1, il2);
 
-   FOC::ParkClarke(il1, il2, angle);
+   FOC::ParkClarke(il2, il1, angle);
    id = FOC::id;
    iq = FOC::iq;
 

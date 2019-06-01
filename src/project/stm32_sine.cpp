@@ -547,6 +547,7 @@ static void GetCruiseCreepCommand(s32fp& finalSpnt, int throtSpnt)
 static void ProcessThrottle()
 {
    s32fp throtSpnt, finalSpnt;
+   u32fp brkrampstr = (u32fp)Param::Get(Param::brkrampstr);
 
    if ((int)Encoder::GetSpeed() < Param::GetInt(Param::throtramprpm))
       Throttle::throttleRamp = Param::GetInt(Param::throtramp);
@@ -571,6 +572,13 @@ static void ProcessThrottle()
    slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, Param::GetInt(Param::brkpedalramp));
 
    Param::SetFlt(Param::potnom, slowThrottleCommmand);
+
+   if (Encoder::GetRotorFrequency() < brkrampstr && slowThrottleCommmand < 0)
+   {
+      slowThrottleCommmand = FP_MUL(FP_DIV(Encoder::GetRotorFrequency(), brkrampstr), -slowThrottleCommmand);
+   }
+
+
    s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
    s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
    PwmGeneration::SetCurrents(id, iq);

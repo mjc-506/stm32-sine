@@ -527,7 +527,7 @@ uint16_t Encoder::DecodeAngle()
    //Wait for signal to reach usable amplitude
    if ((maxSin - minSin) > MIN_RES_AMP)
    {
-      return SineCore::Atan2(cos, sin);
+      return SineCore::Atan2(sin, cos);
    }
    else
    {
