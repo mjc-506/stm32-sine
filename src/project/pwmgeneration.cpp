@@ -49,6 +49,8 @@ static bool tripped;
 static s32fp ilofs[2];
 static uint16_t execTicks = 0;
 static s32fp idref = 0, iqref = 0;
+static s32fp curkp, curki;
+static s32fp sumq = 0, sumd = 0;
 
 /*********/
 /*static s32fp ProcessCurrents(s32fp& id, s32fp& iq);
@@ -58,6 +60,15 @@ static void CalcNextAngleAsync(int dir);
 static void CalcNextAngleConstant(int dir);
 static void Charge();
 static void AcHeat();*/
+s32fp PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum)
+{
+   s32fp err = refVal - curVal;
+
+   if (sum < FP_FROMINT(1000000) && err > 0)
+      sum += err;
+
+   return FP_MUL(err, curkp) + FP_MUL(sum, curki) / pwmfrq;
+}
 
 void PwmGeneration::Run()
 {
@@ -68,7 +79,7 @@ void PwmGeneration::Run()
       s32fp id, iq;
 
       Encoder::UpdateRotorAngle(dir);
-      s32fp ampNomLimited = ampnom; //LimitCurrent();
+      //s32fp ampNomLimited = ampnom; //LimitCurrent();
 
       if (opmode == MOD_SINE)
          CalcNextAngleConstant(dir);
@@ -78,9 +89,11 @@ void PwmGeneration::Run()
          CalcNextAngleAsync(dir);
 
       ProcessCurrents(id, iq);
-      id = FP_MUL((idref - id), Param::Get(Param::iackp));
-      iq = FP_MUL((iqref - iq), Param::Get(Param::iackp));
-      FOC::InvParkClarke(id, iq, angle);
+      //id = FP_MUL((idref - id), curkp);
+      //iq = FP_MUL((iqref - iq), curkp);
+      s32fp ud = PiController(idref, id, sumd);
+      s32fp uq = PiController(iqref, iq, sumq);
+      FOC::InvParkClarke(ud, uq, angle);
 
       //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
 
@@ -96,7 +109,7 @@ void PwmGeneration::Run()
       dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;*/
 
       /* Shut down PWM on zero voltage request */
-      if (/*0 == amp ||*/ 0 == dir)
+      if (0 == iqref || 0 == dir)
       {
          timer_disable_break_main_output(PWM_TIMER);
       }
@@ -148,6 +161,12 @@ void PwmGeneration::SetCurrents(s32fp id, s32fp iq)
    iqref = iq;
 }
 
+void PwmGeneration::SetControllerGains(s32fp kp, s32fp ki)
+{
+   curkp = kp;
+   curki = ki;
+}
+
 void PwmGeneration::SetFslip(s32fp _fslip)
 {
    slipIncr = FRQ_TO_ANGLE(_fslip);
@@ -183,6 +202,8 @@ void PwmGeneration::SetOpmode(int _opmode)
 
    if (opmode != MOD_OFF)
    {
+      sumd = 0;
+      sumq = 0;
       PwmInit();
    }
 

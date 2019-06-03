@@ -547,7 +547,7 @@ static void GetCruiseCreepCommand(s32fp& finalSpnt, int throtSpnt)
 static void ProcessThrottle()
 {
    s32fp throtSpnt, finalSpnt;
-   u32fp brkrampstr = (u32fp)Param::Get(Param::brkrampstr);
+   s32fp brkrampstr = Param::Get(Param::brkrampstr);
 
    if ((int)Encoder::GetSpeed() < Param::GetInt(Param::throtramprpm))
       Throttle::throttleRamp = Param::GetInt(Param::throtramp);
@@ -561,7 +561,7 @@ static void ProcessThrottle()
       Throttle::BmsLimitCommand(finalSpnt, Param::GetBool(Param::din_bms));
 
    Throttle::UdcLimitCommand(finalSpnt, Param::Get(Param::udc));
-   Throttle::IdcLimitCommand(finalSpnt, Param::Get(Param::idc));
+   //Throttle::IdcLimitCommand(finalSpnt, Param::Get(Param::idc));
 
    if (Throttle::TemperatureDerate(Param::Get(Param::tmphs), finalSpnt))
    {
@@ -569,15 +569,15 @@ static void ProcessThrottle()
       ErrorMessage::Post(ERR_TMPHSMAX);
    }
 
-   slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, Param::GetInt(Param::brkpedalramp));
+   slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, 4);
 
-   Param::SetFlt(Param::potnom, slowThrottleCommmand);
 
-   if (Encoder::GetRotorFrequency() < brkrampstr && slowThrottleCommmand < 0)
+   if (Encoder::GetRotorFrequency() < (u32fp)brkrampstr && slowThrottleCommmand < 0)
    {
-      slowThrottleCommmand = FP_MUL(FP_DIV(Encoder::GetRotorFrequency(), brkrampstr), -slowThrottleCommmand);
+      slowThrottleCommmand = FP_MUL((s32fp)FP_DIV(Encoder::GetRotorFrequency(), brkrampstr), slowThrottleCommmand);
    }
 
+   Param::SetFlt(Param::potnom, slowThrottleCommmand);
 
    s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
    s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
@@ -734,7 +734,7 @@ static void Ms1Task(void)
 {
    static s32fp ilFlt = 0;
    static s32fp iSpntFlt = 0;
-   static s32fp iacflt = 0;
+   //static s32fp iacflt = 0;
    int opmode = Param::GetInt(Param::opmode);
    //s32fp throttleCommand = slowThrottleCommmand;
 
@@ -795,6 +795,7 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
    else
    {
       PwmGeneration::SetCurrentLimitThreshold(Param::Get(Param::ocurlim));
+      PwmGeneration::SetControllerGains(Param::Get(Param::curkp), Param::Get(Param::curki));
 
       Encoder::SetMode((enum Encoder::mode)Param::GetInt(Param::encmode));
       Encoder::SetImpulsesPerTurn(Param::GetInt(Param::numimp));

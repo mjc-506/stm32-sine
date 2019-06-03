@@ -54,14 +54,14 @@ void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
    iq = IIRFILTER(iq, iql, 2);
 }
 
-void FOC::InvParkClarke(s32fp id, s32fp iq, uint16_t angle)
+void FOC::InvParkClarke(s32fp ud, s32fp uq, uint16_t angle)
 {
    s32fp sin = SineCore::Sine(angle);
    s32fp cos = SineCore::Cosine(angle);
 
    //Inverse Park transformation
-   s32fp ia = FP_MUL(cos, id) - FP_MUL(sin, iq);
-   s32fp ib = FP_MUL(cos, iq) + FP_MUL(sin, id);
+   s32fp ia = FP_MUL(cos, ud) - FP_MUL(sin, uq);
+   s32fp ib = FP_MUL(cos, uq) + FP_MUL(sin, ud);
    //Inverse Clarke transformation
    DutyCycles[0] = ia;
    DutyCycles[1] = FP_MUL(-FP_FROMFLT(0.5), ia) + FP_MUL(sqrt3ov2, ib);

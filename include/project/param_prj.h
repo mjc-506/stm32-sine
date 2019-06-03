@@ -22,9 +22,11 @@
    2. Temporary parameters (id = 0)
    3. Display value
  */
-//Next param id (increase when adding new parameter!): 107
+//Next param id (increase when adding new parameter!): 109
 /*              category     name         unit       min     max     default id */
 #define PARAM_LIST \
+    PARAM_ENTRY(CAT_MOTOR,   curkp,       "",        0,      10000,  2,      107   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curki,       "",        0,      10000,  0,      108   ) \
     PARAM_ENTRY(CAT_MOTOR,   boost,       "dig",     0,      37813,  1700,   1   ) \
     PARAM_ENTRY(CAT_MOTOR,   fweak,       "Hz",      0,      1000,   90,     2   ) \
     PARAM_ENTRY(CAT_MOTOR,   fconst,      "Hz",      0,      1000,   180,    99   ) \
