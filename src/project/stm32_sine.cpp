@@ -136,8 +136,8 @@ static void SelectDirection()
    /* Current direction doesn't match selected direction -> neutral */
    if (selectedDir != userDirSelection)
       selectedDir = 0;
-#warning
-   Param::SetInt(Param::dir, 1);//selectedDir);
+
+   Param::SetInt(Param::dir, selectedDir);
 }
 
 static void Ms100Task(void)
@@ -581,7 +581,7 @@ static void ProcessThrottle()
 
    s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
    s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
-   PwmGeneration::SetCurrents(Param::Get(Param::throtid), Param::Get(Param::throtiq));
+   PwmGeneration::SetCurrents(id, iq);
 }
 
 static void SetContactorsOffState()
