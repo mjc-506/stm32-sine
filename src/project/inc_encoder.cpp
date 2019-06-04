@@ -72,6 +72,7 @@ static enum Encoder::mode encMode = Encoder::INVALID;
 static bool seenNorthSignal = false;
 static uint32_t turnsSinceLastSample = 0;
 static int32_t minSin = 0, maxSin = 0, startupDelay;
+static bool resolverInputSwap = false;
 
 void Encoder::Reset()
 {
@@ -80,7 +81,7 @@ void Encoder::Reset()
    minSin = 0;
    maxSin = 0;
    lastFrequency = 0;
-   startupDelay = 2000;
+   startupDelay = 4000;
    for (uint32_t i = 0; i < MAX_REVCNT_VALUES; i++)
       timdata[i] = MAX_CNT;
 }
@@ -140,6 +141,15 @@ void Encoder::SetImpulsesPerTurn(uint16_t imp)
 
    if (encMode == AB || encMode == ABZ)
       InitTimerABZMode();
+}
+
+void Encoder::SwapSinCos(bool swap)
+{
+   if (resolverInputSwap != swap && (encMode == RESOLVER || encMode == SINCOS))
+   {
+      InitResolverMode();
+   }
+   resolverInputSwap = swap;
 }
 
 void Encoder::UpdateRotorAngle(int dir)
@@ -405,7 +415,13 @@ void Encoder::InitTimerABZMode()
 
 void Encoder::InitResolverMode()
 {
-   uint8_t channels[] = { 0, 6, 7 };
+   uint8_t channels[3] = { 0, 6, 7 };
+
+   if (resolverInputSwap)
+   {
+      channels[1] = channels[2];
+      channels[2] = 6;
+   }
 
    adc_set_injected_sequence(ADC1, sizeof(channels), channels);
    adc_enable_external_trigger_injected(ADC1, ADC_CR2_JEXTSEL_JSWSTART);
@@ -415,7 +431,7 @@ void Encoder::InitResolverMode()
    gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, GPIO6 | GPIO7);
    exti_disable_request(EXTI2);
 
-   if (encMode == Encoder::RESOLVER)
+   if (encMode == RESOLVER)
    {
       rcc_periph_reset_pulse(REV_CNT_TIMRST);
       timer_set_prescaler(REV_CNT_TIMER, 71); //run at 1MHz
@@ -432,13 +448,13 @@ void Encoder::InitResolverMode()
 
       while (!adc_eoc_injected(ADC1));
 
-      int sin = adc_read_injected(ADC1, 2);
-      int cos = adc_read_injected(ADC1, 3);
-      adc_set_injected_offset(ADC1, 2, sin);
-      adc_set_injected_offset(ADC1, 3, cos);
+      int ch1 = adc_read_injected(ADC1, 2);
+      int ch2 = adc_read_injected(ADC1, 3);
+      adc_set_injected_offset(ADC1, 2, ch1);
+      adc_set_injected_offset(ADC1, 3, ch2);
       adc_enable_external_trigger_injected(ADC1, ADC_CR2_JEXTSEL_TIM3_CC4);
 
-      if (CHK_BIPOLAR_OFS(sin) || CHK_BIPOLAR_OFS(cos))
+      if (CHK_BIPOLAR_OFS(ch1) || CHK_BIPOLAR_OFS(ch2))
       {
          ErrorMessage::Post(ERR_HIRESOFS);
       }
@@ -465,7 +481,6 @@ uint16_t Encoder::GetAngleSPI()
    {
       GPIO_BRR(GPIOA) = GPIO7;
       uint32_t bit = ((uint32_t)GPIO_IDR(GPIOA) & GPIO6);
-      //d |= ((uint32_t)GPIO_IDR(GPIOA) & GPIO6) << i;
       GPIO_BSRR(GPIOA) = GPIO7;
       d |= bit << i;
    }
@@ -518,8 +533,6 @@ uint16_t Encoder::DecodeAngle()
 {
    int sin = adc_read_injected(ADC1, 2);
    int cos = adc_read_injected(ADC1, 3);
-   //Param::SetInt(Param::sin, sin);
-   //Param::SetInt(Param::cos, cos);
 
    minSin = MIN(sin, minSin);
    maxSin = MAX(sin, maxSin);

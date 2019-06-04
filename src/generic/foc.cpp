@@ -26,10 +26,10 @@
 
 static const s32fp sqrt3inv1 = FP_FROMFLT(0.57735026919); //1/sqrt(3)
 static const s32fp sqrt3inv2 = 2*sqrt3inv1; //2/sqrt(2)
-static const s32fp sqrt3ov2 = (SQRT3 / 2);
+//static const s32fp sqrt3ov2 = (SQRT3 / 2);
 static const s32fp zeroOffset = FP_FROMINT(1);
 static int32_t minPulse = 1000;
-static int32_t maxPulse = FP_FROMFLT(2) - 1000;
+static int32_t maxPulse = FP_FROMINT(2) - 1000;
 
 s32fp FOC::id;
 s32fp FOC::iq;
@@ -54,18 +54,34 @@ void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
    iq = IIRFILTER(iq, iql, 2);
 }
 
-void FOC::InvParkClarke(s32fp ud, s32fp uq, uint16_t angle)
+int32_t FOC::LimitVoltages(int32_t& ud, int32_t& uq)
+{
+   const int32_t modMax = 37813;
+   const int32_t modMaxPow2 = modMax * modMax;
+   const int32_t modMaxSqrt2 = 26737;
+
+   ud = MIN(ud, modMaxSqrt2);
+   ud = MAX(ud, -modMaxSqrt2);
+
+   int32_t qlimit = sqrt(modMaxPow2 - ud * ud);
+   uq = MIN(uq, qlimit);
+   uq = MAX(uq, -qlimit);
+
+   return qlimit;
+}
+
+void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
 {
    s32fp sin = SineCore::Sine(angle);
    s32fp cos = SineCore::Cosine(angle);
 
    //Inverse Park transformation
-   s32fp ia = FP_MUL(cos, ud) - FP_MUL(sin, uq);
-   s32fp ib = FP_MUL(cos, uq) + FP_MUL(sin, ud);
+   s32fp ua = (cos * ud - sin * uq) >> 15;
+   s32fp ub = (cos * uq + sin * ud) >> 15;
    //Inverse Clarke transformation
-   DutyCycles[0] = ia;
-   DutyCycles[1] = FP_MUL(-FP_FROMFLT(0.5), ia) + FP_MUL(sqrt3ov2, ib);
-   DutyCycles[2] = FP_MUL(-FP_FROMFLT(0.5), ia) - FP_MUL(sqrt3ov2, ib);
+   DutyCycles[0] = ua;
+   DutyCycles[1] = (-ua + FP_MUL(SQRT3, ub)) / 2;
+   DutyCycles[2] = (-ua - FP_MUL(SQRT3, ub)) / 2;
 
    int32_t offset = SineCore::CalcSVPWMOffset(DutyCycles[0], DutyCycles[1], DutyCycles[2]);
 
@@ -82,7 +98,22 @@ void FOC::InvParkClarke(s32fp ud, s32fp uq, uint16_t angle)
       }
       else if (DutyCycles[i] > maxPulse)
       {
-         DutyCycles[i] = FP_FROMINT(1);
+         DutyCycles[i] = FP_FROMINT(2);
       }
    }
 }
+
+uint32_t FOC::sqrt(uint32_t rad)
+{
+   uint32_t radshift = (rad < 10000 ? 5 : (rad < 10000000 ? 9 : (rad < 1000000000 ? 13 : 15)));
+   uint32_t sqrt = (rad >> radshift) + 1; //Starting value for newton iteration
+   uint32_t sqrtl;
+
+   do {
+      sqrtl = sqrt;
+      sqrt = (sqrt + rad / sqrt) / 2;
+   } while ((sqrtl - sqrt) > 1);
+
+   return sqrt;
+}
+

@@ -49,26 +49,20 @@ static bool tripped;
 static s32fp ilofs[2];
 static uint16_t execTicks = 0;
 static s32fp idref = 0, iqref = 0;
-static s32fp curkp, curki;
+static s32fp curdkp, curqkp, curdki, curqki;
 static s32fp sumq = 0, sumd = 0;
 
-/*********/
-/*static s32fp ProcessCurrents(s32fp& id, s32fp& iq);
-static s32fp LimitCurrent();
-static void CalcNextAngleSync(int dir);
-static void CalcNextAngleAsync(int dir);
-static void CalcNextAngleConstant(int dir);
-static void Charge();
-static void AcHeat();*/
-s32fp PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum)
+int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, s32fp kp, s32fp ki)
 {
    s32fp err = refVal - curVal;
 
    if (sum < FP_FROMINT(1000000) && err > 0)
       sum += err;
 
-   return FP_MUL(err, curkp) + FP_MUL(sum, curki) / pwmfrq;
+   return FP_TOINT(FP_MUL(err, kp) + FP_MUL(sum, ki) / pwmfrq);
 }
+
+
 
 void PwmGeneration::Run()
 {
@@ -91,16 +85,22 @@ void PwmGeneration::Run()
       ProcessCurrents(id, iq);
       //id = FP_MUL((idref - id), curkp);
       //iq = FP_MUL((iqref - iq), curkp);
-      s32fp ud = PiController(idref, id, sumd);
-      s32fp uq = PiController(iqref, iq, sumq);
+      s32fp ud = PiController(idref, id, sumd, curdkp, curdki);
+      s32fp uq = PiController(iqref, iq, sumq, curqkp, curqki);
+      int l = FOC::LimitVoltages(ud, uq);
       FOC::InvParkClarke(ud, uq, angle);
 
       //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
 
       //SineCore::SetAmp(amp);
-      //Param::SetInt(Param::amp, amp);
+      int amp = MAX(FOC::DutyCycles[0], FOC::DutyCycles[1]);
+      amp = MAX(amp, FOC::DutyCycles[2]);
+      Param::SetInt(Param::amp, amp);
       Param::SetFlt(Param::fstat, frq);
       Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
+      Param::SetInt(Param::ud, ud);
+      Param::SetInt(Param::uq, uq);
+      Param::SetInt(Param::qlimit, l);
       //SineCore::Calc(angle);
 
       /* Match to PWM resolution */
@@ -161,10 +161,12 @@ void PwmGeneration::SetCurrents(s32fp id, s32fp iq)
    iqref = iq;
 }
 
-void PwmGeneration::SetControllerGains(s32fp kp, s32fp ki)
+void PwmGeneration::SetControllerGains(s32fp dkp, s32fp dki, s32fp qkp, s32fp qki)
 {
-   curkp = kp;
-   curki = ki;
+   curdkp = dkp;
+   curdki = dki;
+   curqkp = qkp;
+   curqki = qki;
 }
 
 void PwmGeneration::SetFslip(s32fp _fslip)
@@ -204,6 +206,8 @@ void PwmGeneration::SetOpmode(int _opmode)
    {
       sumd = 0;
       sumq = 0;
+      FOC::id = 0;
+      FOC::iq = 0;
       PwmInit();
    }
 
@@ -584,7 +588,8 @@ uint16_t PwmGeneration::TimerSetup(uint16_t deadtime, int pwmpol)
    timer_disable_break_automatic_output(PWM_TIMER);
    timer_enable_break_main_output(PWM_TIMER);
    timer_set_break_polarity_high(PWM_TIMER);
-   timer_enable_break(PWM_TIMER);
+   #warning
+   //timer_enable_break(PWM_TIMER);
    timer_set_enabled_off_state_in_run_mode(PWM_TIMER);
    timer_set_enabled_off_state_in_idle_mode(PWM_TIMER);
 

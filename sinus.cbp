@@ -16,7 +16,7 @@
 		</MakeCommands>
 		<Build>
 			<Target title="STM32F103">
-				<Option output="stm32_sineHWCONFIG_REV1" prefix_auto="0" extension_auto="0" />
+				<Option output="stm32_sine" prefix_auto="0" extension_auto="0" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="armelfgcc" />

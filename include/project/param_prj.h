@@ -22,11 +22,13 @@
    2. Temporary parameters (id = 0)
    3. Display value
  */
-//Next param id (increase when adding new parameter!): 109
+//Next param id (increase when adding new parameter!): 112
 /*              category     name         unit       min     max     default id */
 #define PARAM_LIST \
-    PARAM_ENTRY(CAT_MOTOR,   curkp,       "",        0,      10000,  2,      107   ) \
-    PARAM_ENTRY(CAT_MOTOR,   curki,       "",        0,      10000,  0,      108   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curqkp,       "",        0,      10000,  2,      107   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curqki,       "",        0,      10000,  0,      108   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curdkp,       "",        0,      10000,  2,      110   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curdki,       "",        0,      10000,  0,      111   ) \
     PARAM_ENTRY(CAT_MOTOR,   boost,       "dig",     0,      37813,  1700,   1   ) \
     PARAM_ENTRY(CAT_MOTOR,   fweak,       "Hz",      0,      1000,   90,     2   ) \
     PARAM_ENTRY(CAT_MOTOR,   fconst,      "Hz",      0,      1000,   180,    99   ) \
@@ -59,6 +61,7 @@
     PARAM_ENTRY(CAT_INVERTER,udcofs,      "dig",     0,      4095,   0,      77  ) \
     PARAM_ENTRY(CAT_INVERTER,udclim,      "V",       0,      1000,   540,    48  ) \
     PARAM_ENTRY(CAT_INVERTER,snshs,       SNS_HS,    0,      5,      0,      45  ) \
+    PARAM_ENTRY(CAT_INVERTER,pinswap,     SWAPS,     0,      7,      0,      109 ) \
     PARAM_ENTRY(CAT_DERATE,  bmslimhigh,  "%",       0,      100,    50,     55  ) \
     PARAM_ENTRY(CAT_DERATE,  bmslimlow,   "%",       -100,   0,      -1,     56  ) \
     PARAM_ENTRY(CAT_DERATE,  udcmin,      "V",       0,      1000,   450,    42  ) \
@@ -83,8 +86,8 @@
     PARAM_ENTRY(CAT_THROTTLE,throtramprpm,"rpm",     0,      20000,  20000,  85  ) \
     PARAM_ENTRY(CAT_THROTTLE,ampmin,      "%",       0,      100,    10,     4   ) \
     PARAM_ENTRY(CAT_THROTTLE,slipstart,   "%",       10,     100,    50,     90  ) \
-    PARAM_ENTRY(CAT_THROTTLE,throtiq,     "A/%",     -10,    10,     1,     105   ) \
-    PARAM_ENTRY(CAT_THROTTLE,throtid,     "A/%",     -10,    10,     1,     106  ) \
+    PARAM_ENTRY(CAT_THROTTLE,throtiq,     "A/%",     -1000,    1000,     1,     105   ) \
+    PARAM_ENTRY(CAT_THROTTLE,throtid,     "A/%",     -1000,    1000,     1,     106  ) \
     PARAM_ENTRY(CAT_REGEN,   brknompedal, "%",       -100,   0,      -50,    38  ) \
     PARAM_ENTRY(CAT_REGEN,   brkpedalramp,"%/10ms",  1,      100,    100,    68  ) \
     PARAM_ENTRY(CAT_REGEN,   brknom,      "%",       0,      100,    30,     19  ) \
@@ -150,9 +153,12 @@
     VALUE_ENTRY(dout_prec,   "",      2033 ) \
     VALUE_ENTRY(dout_dcsw,   "",      2034 ) \
     VALUE_ENTRY(cpuload,     "%",     2035 ) \
-    VALUE_ENTRY(dc1,     "%",     22035 ) \
-    VALUE_ENTRY(dc2,     "%",     22035 ) \
-    VALUE_ENTRY(dc3,     "%",     22035 ) \
+    VALUE_ENTRY(dc1,     "dig",     22035 ) \
+    VALUE_ENTRY(dc2,     "dig",     22035 ) \
+    VALUE_ENTRY(dc3,     "dig",     22035 ) \
+    VALUE_ENTRY(ud,     "dig",     22035 ) \
+    VALUE_ENTRY(uq,     "dig",     22035 ) \
+    VALUE_ENTRY(qlimit,     "dig",     22035 ) \
 
 /*    VALUE_ENTRY(sin,     "", 2100    ) \
     VALUE_ENTRY(cos,     "", 2101    )*/
@@ -179,6 +185,7 @@
 #define CANIOS       "1=Cruise, 2=Start, 4=Brake, 8=Fwd, 16=Rev, 32=Bms"
 #define CANPERIODS   "0=100ms, 1=10ms"
 #define HWREVS       "0=Rev1, 1=Rev2, 2=Rev3, 3=Tesla"
+#define SWAPS        "1=Currents12, 2=ResolverSinCos, 4=PWMOutput12"
 #define CAT_MOTOR    "Motor"
 #define CAT_INVERTER "Inverter"
 #define CAT_THROTTLE "Throttle"
@@ -257,6 +264,13 @@ enum _canio
    CAN_IO_FWD = 8,
    CAN_IO_REV = 16,
    CAN_IO_BMS = 32
+};
+
+enum _swap
+{
+   SWAP_CURRENTS = 1,
+   SWAP_RESOLVER = 2,
+   SWAP_PWM = 4
 };
 //Generated enum-string for possible errors
 extern const char* errorListString;

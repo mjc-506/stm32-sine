@@ -136,8 +136,8 @@ static void SelectDirection()
    /* Current direction doesn't match selected direction -> neutral */
    if (selectedDir != userDirSelection)
       selectedDir = 0;
-
-   Param::SetInt(Param::dir, selectedDir);
+#warning
+   Param::SetInt(Param::dir, 1);//selectedDir);
 }
 
 static void Ms100Task(void)
@@ -581,7 +581,7 @@ static void ProcessThrottle()
 
    s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
    s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
-   PwmGeneration::SetCurrents(id, iq);
+   PwmGeneration::SetCurrents(Param::Get(Param::throtid), Param::Get(Param::throtiq));
 }
 
 static void SetContactorsOffState()
@@ -795,10 +795,12 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
    else
    {
       PwmGeneration::SetCurrentLimitThreshold(Param::Get(Param::ocurlim));
-      PwmGeneration::SetControllerGains(Param::Get(Param::curkp), Param::Get(Param::curki));
+      PwmGeneration::SetControllerGains(Param::Get(Param::curdkp), Param::Get(Param::curdki),
+                                        Param::Get(Param::curqkp), Param::Get(Param::curqki));
 
       Encoder::SetMode((enum Encoder::mode)Param::GetInt(Param::encmode));
       Encoder::SetImpulsesPerTurn(Param::GetInt(Param::numimp));
+      Encoder::SwapSinCos((Param::GetInt(Param::pinswap) & SWAP_RESOLVER) > 0);
 
       MotorVoltage::SetMinFrq(Param::Get(Param::fmin));
       MotorVoltage::SetMaxFrq(Param::Get(Param::fmax));
