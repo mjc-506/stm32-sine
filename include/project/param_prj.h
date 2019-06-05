@@ -158,7 +158,6 @@
     VALUE_ENTRY(dc3,     "dig",     22035 ) \
     VALUE_ENTRY(ud,     "dig",     22035 ) \
     VALUE_ENTRY(uq,     "dig",     22035 ) \
-    VALUE_ENTRY(qlimit,     "dig",     22035 ) \
 
 /*    VALUE_ENTRY(sin,     "", 2100    ) \
     VALUE_ENTRY(cos,     "", 2101    )*/

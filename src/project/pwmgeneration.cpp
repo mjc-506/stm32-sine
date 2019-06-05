@@ -62,8 +62,6 @@ int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, s32f
    return FP_TOINT(FP_MUL(err, kp) + FP_MUL(sum, ki) / pwmfrq);
 }
 
-
-
 void PwmGeneration::Run()
 {
    if (opmode == MOD_MANUAL || opmode == MOD_RUN || opmode == MOD_SINE)
@@ -73,40 +71,25 @@ void PwmGeneration::Run()
       s32fp id, iq;
 
       Encoder::UpdateRotorAngle(dir);
-      //s32fp ampNomLimited = ampnom; //LimitCurrent();
-
+      //8us
       if (opmode == MOD_SINE)
          CalcNextAngleConstant(dir);
       else if (Encoder::IsSyncMode())
          CalcNextAngleSync(dir);
       else
          CalcNextAngleAsync(dir);
-
+      //11.5us
       ProcessCurrents(id, iq);
-      //id = FP_MUL((idref - id), curkp);
-      //iq = FP_MUL((iqref - iq), curkp);
+      //27.8us
       s32fp ud = PiController(idref, id, sumd, curdkp, curdki);
       s32fp uq = PiController(iqref, iq, sumq, curqkp, curqki);
-      int l = FOC::LimitVoltages(ud, uq);
+      FOC::LimitVoltages(ud, uq);
       FOC::InvParkClarke(ud, uq, angle);
-
-      //uint32_t amp = MotorVoltage::GetAmpPerc(frq, ampNomLimited);
-
-      //SineCore::SetAmp(amp);
-      int amp = MAX(FOC::DutyCycles[0], FOC::DutyCycles[1]);
-      amp = MAX(amp, FOC::DutyCycles[2]);
-      Param::SetInt(Param::amp, amp);
+      //35us
       Param::SetFlt(Param::fstat, frq);
       Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
       Param::SetInt(Param::ud, ud);
       Param::SetInt(Param::uq, uq);
-      Param::SetInt(Param::qlimit, l);
-      //SineCore::Calc(angle);
-
-      /* Match to PWM resolution */
-      /*dc[0] = SineCore::DutyCycles[0] >> shiftForTimer;
-      dc[1] = SineCore::DutyCycles[1] >> shiftForTimer;
-      dc[2] = SineCore::DutyCycles[2] >> shiftForTimer;*/
 
       /* Shut down PWM on zero voltage request */
       if (0 == iqref || 0 == dir)
@@ -127,6 +110,7 @@ void PwmGeneration::Run()
       timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
       timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
       timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+      //37us
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
    {
@@ -255,17 +239,22 @@ extern "C" void tim1_brk_isr(void)
    DigIo::Set(Pin::err_out);
    tripped = true;
 }
-
+#define TIM_CR1_DIR (1 << 4)
 extern "C" void pwm_timer_isr(void)
 {
+   gpio_set(GPIOB, GPIO13);
    int start = timer_get_counter(PWM_TIMER);
    /* Clear interrupt pending flag */
    timer_clear_flag(PWM_TIMER, TIM_SR_UIF);
 
    PwmGeneration::Run();
-
    int time = timer_get_counter(PWM_TIMER) - start;
+
+   if (TIM_CR1(PWM_TIMER) & TIM_CR1_DIR)
+      time = (2 << pwmdigits) - timer_get_counter(PWM_TIMER) - start;
+
    execTicks = ABS(time);
+   gpio_clear(GPIOB, GPIO13);
 }
 
 /**
@@ -588,6 +577,7 @@ uint16_t PwmGeneration::TimerSetup(uint16_t deadtime, int pwmpol)
    timer_disable_break_automatic_output(PWM_TIMER);
    timer_enable_break_main_output(PWM_TIMER);
    timer_set_break_polarity_high(PWM_TIMER);
+   timer_enable_break(PWM_TIMER);
    timer_set_enabled_off_state_in_run_mode(PWM_TIMER);
    timer_set_enabled_off_state_in_idle_mode(PWM_TIMER);
 
