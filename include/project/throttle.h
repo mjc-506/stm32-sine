@@ -36,7 +36,6 @@ class Throttle
       static void BmsLimitCommand(s32fp& finalSpnt, bool dinbms);
       static void UdcLimitCommand(s32fp& finalSpnt, s32fp udc);
       static void IdcLimitCommand(s32fp& finalSpnt, s32fp idc);
-      static void IacLimitCommand(s32fp& finalSpnt, s32fp iac);
       static int potmin[2];
       static int potmax[2];
       static int brknom;
@@ -58,8 +57,6 @@ class Throttle
       static s32fp udcmax;
       static s32fp idcmin;
       static s32fp idcmax;
-      static s32fp iacmax;
-      static s32fp iackp;
 
    private:
       static int speedFiltered;

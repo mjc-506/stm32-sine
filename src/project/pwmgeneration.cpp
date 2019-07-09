@@ -56,8 +56,9 @@ int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, s32f
 {
    s32fp err = refVal - curVal;
 
-   if (sum < FP_FROMINT(1000000) && err > 0)
-      sum += err;
+   sum += err;
+   sum = MAX(FP_FROMINT(-1000000), sum);
+   sum = MIN(FP_FROMINT(1000000), sum);
 
    return FP_TOINT(FP_MUL(err, kp) + FP_MUL(sum, ki) / pwmfrq);
 }
@@ -107,9 +108,18 @@ void PwmGeneration::Run()
          Param::SetInt((Param::PARAM_NUM)(Param::dc1+i), dc[i]);
       }
 
-      timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
-      timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
-      timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+      if ((Param::GetInt(Param::pinswap) & SWAP_PWM) > 0)
+      {
+         timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[1]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[0]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+      }
+      else
+      {
+         timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[0]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+      }
       //37us
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
@@ -239,7 +249,7 @@ extern "C" void tim1_brk_isr(void)
    DigIo::Set(Pin::err_out);
    tripped = true;
 }
-#define TIM_CR1_DIR (1 << 4)
+
 extern "C" void pwm_timer_isr(void)
 {
    gpio_set(GPIOB, GPIO13);
@@ -250,7 +260,7 @@ extern "C" void pwm_timer_isr(void)
    PwmGeneration::Run();
    int time = timer_get_counter(PWM_TIMER) - start;
 
-   if (TIM_CR1(PWM_TIMER) & TIM_CR1_DIR)
+   if (TIM_CR1(PWM_TIMER) & TIM_CR1_DIR_DOWN)
       time = (2 << pwmdigits) - timer_get_counter(PWM_TIMER) - start;
 
    execTicks = ABS(time);
@@ -307,18 +317,11 @@ void PwmGeneration::CalcNextAngleSync(int dir)
    if (Encoder::SeenNorthSignal())
    {
       uint32_t polePairs = Param::GetInt(Param::polepairs) / Param::GetInt(Param::respolepairs);
-      //int32_t potnom = Param::GetInt(Param::potnom);
-      uint16_t syncOfs = /*potnom < 0 ? Param::GetInt(Param::syncofsregen) :*/ Param::GetInt(Param::syncofs);
+      uint16_t syncOfs = Param::GetInt(Param::syncofs);
       uint16_t rotorAngle = Encoder::GetRotorAngle();
-      s32fp fweak = Param::Get(Param::fweak);
-      int16_t syncAdv = frq > fweak ? FP_TOINT(FP_MUL(Param::Get(Param::syncadvweak), frq)) : FP_TOINT(FP_MUL(Param::Get(Param::syncadv), frq));
+      int16_t syncAdv = FP_TOINT(FP_MUL(Param::Get(Param::syncadv), frq));
 
       syncOfs += syncAdv;
-
-      /*if (dir < 0)
-      {
-         syncOfs += SHIFT_180DEG;
-      }*/
 
       angle = polePairs * rotorAngle + syncOfs;
       frq = polePairs * Encoder::GetRotorFrequency();
@@ -487,7 +490,7 @@ s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
 
    s32fp il1 = GetCurrent(AnaIn::il1, ilofs[0], Param::Get(Param::il1gain));
    s32fp il2 = GetCurrent(AnaIn::il2, ilofs[1], Param::Get(Param::il2gain));
-   s32fp rms;
+   /*s32fp rms;
    s32fp il1PrevRms = Param::Get(Param::il1rms);
    s32fp il2PrevRms = Param::Get(Param::il2rms);
    EdgeType edge = CalcRms(il1, lastEdge[0], currentMax[0], rms, samples[0], il1PrevRms);
@@ -515,9 +518,12 @@ s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
       Param::SetFlt(Param::il2rms, rms);
    }
 
-   s32fp ilMax = sign * GetIlMax(il1, il2);
+   s32fp ilMax = sign * GetIlMax(il1, il2);*/
 
-   FOC::ParkClarke(il2, il1, angle);
+   if ((Param::GetInt(Param::pinswap) & SWAP_CURRENTS) > 0)
+      FOC::ParkClarke(il2, il1, angle);
+   else
+      FOC::ParkClarke(il1, il2, angle);
    id = FOC::id;
    iq = FOC::iq;
 
@@ -525,9 +531,9 @@ s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
    Param::SetFlt(Param::iq, FOC::iq);
    Param::SetFlt(Param::il1, il1);
    Param::SetFlt(Param::il2, il2);
-   Param::SetFlt(Param::ilmax, ilMax);
+   //Param::SetFlt(Param::ilmax, ilMax);
 
-   return ilMax;
+   return 0;//ilMax;
 }
 
 /**

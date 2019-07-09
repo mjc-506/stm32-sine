@@ -45,10 +45,7 @@
     PARAM_ENTRY(CAT_MOTOR,   dirchrpm,    "rpm",     0,      2000,   100,    87  ) \
     PARAM_ENTRY(CAT_MOTOR,   dirmode,     DIRMODES,  0,      3,      1,      95  ) \
     PARAM_ENTRY(CAT_MOTOR,   syncofs,     "dig",     0,      65535,  0,      70  ) \
-    PARAM_ENTRY(CAT_MOTOR,   syncofsregen,"dig",     0,      65535,  0,      103  ) \
     PARAM_ENTRY(CAT_MOTOR,   syncadv,     "dig/Hz",  -100,   100,    0,      101 ) \
-    PARAM_ENTRY(CAT_MOTOR,   syncadvweak, "dig/Hz",  -100,   100,    0,      102 ) \
-    PARAM_ENTRY(CAT_MOTOR,   dirdet,"dig",     0,      65535,  0,      104  ) \
     PARAM_ENTRY(CAT_MOTOR,   snsm,        SNS_M,     12,     14,     12,     46  ) \
     PARAM_ENTRY(CAT_INVERTER,pwmfrq,      PWMFRQS,   0,      4,      1,      13  ) \
     PARAM_ENTRY(CAT_INVERTER,pwmpol,      PWMPOLS,   0,      1,      0,      52  ) \
@@ -70,8 +67,6 @@
     PARAM_ENTRY(CAT_DERATE,  idcmax,      "A",       0,      5000,   5000,   96  ) \
     PARAM_ENTRY(CAT_DERATE,  idcmin,      "A",       -5000,  0,     -5000,   98  ) \
     PARAM_ENTRY(CAT_DERATE,  throtmax,    "%",       0,      100,   100,     97  ) \
-    PARAM_ENTRY(CAT_DERATE,  iackp,    "dig",     0,      1000,    10,      91  ) \
-    PARAM_ENTRY(CAT_DERATE,  iacflt,    "dig",     0,      32,     3,      92  ) \
     PARAM_ENTRY(CAT_CHARGER, chargemode,  CHARGEMODS,0,      4,      0,      74  ) \
     PARAM_ENTRY(CAT_CHARGER, chargecur,   "A",       0,      50,     0,      71  ) \
     PARAM_ENTRY(CAT_CHARGER, chargekp,    "dig",     0,      100,    80,     72  ) \

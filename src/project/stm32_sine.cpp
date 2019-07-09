@@ -287,8 +287,8 @@ static void CalcAmpAndSlip(s32fp potnom)
    //anticipate sudden changes by filtering
    s32fp ampnomLast = Param::Get(Param::ampnom);
    s32fp fslipLast = Param::Get(Param::fslipspnt);
-   ampnomLast = IIRFILTER(ampnomLast, ampnom, Param::GetInt(Param::iacflt));
-   fslipLast = IIRFILTER(fslipLast, fslipspnt, Param::GetInt(Param::iacflt));
+   ampnomLast = IIRFILTER(ampnomLast, ampnom, 3);
+   fslipLast = IIRFILTER(fslipLast, fslipspnt, 3);
    Param::Set(Param::ampnom, ampnom);
    Param::Set(Param::fslipspnt, fslipspnt);
 }
@@ -648,7 +648,7 @@ static void Ms10Task(void)
           * - Charge mode is enabled
           * - Fwd AND Rev are high
           */
-         if (DigIo::Get(Pin::fwd_in) && DigIo::Get(Pin::rev_in) && !DigIo::Get(Pin::bms_in) && chargemode >= MOD_BOOST)
+         if (Param::GetBool(Param::din_forward) && Param::GetBool(Param::din_reverse) && !Param::GetBool(Param::din_bms) && chargemode >= MOD_BOOST)
          {
             //In buck mode we precharge to a different voltage
             if ((chargemode == MOD_BUCK && udc >= Param::Get(Param::udcswbuck)) || chargemode == MOD_BOOST)
@@ -670,7 +670,7 @@ static void Ms10Task(void)
       ErrorMessage::UnpostAll();
    }
 
-   if (hwRev != HW_TESLA && opmode >= MOD_BOOST && DigIo::Get(Pin::bms_in))
+   if (hwRev != HW_TESLA && opmode >= MOD_BOOST && Param::GetBool(Param::din_bms))
    {
       opmode = MOD_OFF;
       Param::SetInt(Param::opmode, opmode);
@@ -825,8 +825,6 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
       Throttle::udcmax = FP_MUL(Param::Get(Param::udcmax), FP_FROMFLT(1.05));
       Throttle::idcmin = Param::Get(Param::idcmin);
       Throttle::idcmax = Param::Get(Param::idcmax);
-      Throttle::iacmax = Param::Get(Param::iacmax);
-      Throttle::iackp = Param::Get(Param::iackp);
 
       if (Param::GetInt(Param::pwmfunc) == PWM_FUNC_SPEEDFRQ)
          gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO9);

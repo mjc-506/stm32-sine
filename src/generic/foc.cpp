@@ -47,11 +47,11 @@ void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
    s32fp ia = il1;
    s32fp ib = FP_MUL(sqrt3inv1, il1) + FP_MUL(sqrt3inv2, il2);
    //Park transformation
-   s32fp idl = FP_MUL(cos, ia) + FP_MUL(sin, ib);
-   s32fp iql = FP_MUL(cos, ib) - FP_MUL(sin, ia);
+   id = FP_MUL(cos, ia) + FP_MUL(sin, ib);
+   iq = FP_MUL(cos, ib) - FP_MUL(sin, ia);
 
-   id = IIRFILTER(id, idl, 2);
-   iq = IIRFILTER(iq, iql, 2);
+   //id = IIRFILTER(id, idl, 2);
+   //iq = IIRFILTER(iq, iql, 2);
 }
 
 int32_t FOC::LimitVoltages(int32_t& ud, int32_t& uq)
@@ -76,8 +76,8 @@ void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
    s32fp cos = SineCore::Cosine(angle);
 
    //Inverse Park transformation
-   s32fp ua = (cos * ud - sin * uq) >> 15;
-   s32fp ub = (cos * uq + sin * ud) >> 15;
+   s32fp ua = (cos * ud - sin * uq) >> CST_DIGITS;
+   s32fp ub = (cos * uq + sin * ud) >> CST_DIGITS;
    //Inverse Clarke transformation
    DutyCycles[0] = ua;
    DutyCycles[1] = (-ua + FP_MUL(SQRT3, ub)) / 2;
@@ -87,7 +87,7 @@ void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
 
    for (int i = 0; i < 3; i++)
    {
-      /* 4. subtract it from all 3 phases -> no difference in phase-to-phase voltage */
+      /* subtract it from all 3 phases -> no difference in phase-to-phase voltage */
       DutyCycles[i] -= offset;
       /* Shift above 0 */
       DutyCycles[i] += zeroOffset;

@@ -145,10 +145,6 @@ void Encoder::SetImpulsesPerTurn(uint16_t imp)
 
 void Encoder::SwapSinCos(bool swap)
 {
-   if (resolverInputSwap != swap && (encMode == RESOLVER || encMode == SINCOS))
-   {
-      InitResolverMode();
-   }
    resolverInputSwap = swap;
 }
 
@@ -509,11 +505,14 @@ uint16_t Encoder::GetAngleResolver()
       timer_set_oc_value(REV_CNT_TIMER, TIM_OC4, resolverSampleDelay);
       timer_set_counter(REV_CNT_TIMER, 0);
       timer_enable_counter(REV_CNT_TIMER);
+      angle = DecodeAngle(true);
    }
    else
    {
       gpio_set(GPIOD, GPIO2);
-      angle = DecodeAngle();
+      timer_set_counter(REV_CNT_TIMER, 0);
+      timer_enable_counter(REV_CNT_TIMER);
+      angle = DecodeAngle(false);
    }
 
    return angle;
@@ -522,14 +521,14 @@ uint16_t Encoder::GetAngleResolver()
 /** Calculates angle from a Hall sin/cos encoder like MLX90380 */
 uint16_t Encoder::GetAngleSinCos()
 {
-   uint16_t calcAngle = DecodeAngle();
+   uint16_t calcAngle = DecodeAngle(false);
 
    adc_start_conversion_injected(ADC1);
 
    return calcAngle;
 }
 
-uint16_t Encoder::DecodeAngle()
+uint16_t Encoder::DecodeAngle(bool invert)
 {
    int sin = adc_read_injected(ADC1, 2);
    int cos = adc_read_injected(ADC1, 3);
@@ -540,6 +539,8 @@ uint16_t Encoder::DecodeAngle()
    //Wait for signal to reach usable amplitude
    if ((maxSin - minSin) > MIN_RES_AMP)
    {
+      if (invert)
+         return SineCore::Atan2(-sin, -cos);
       return SineCore::Atan2(sin, cos);
    }
    else
