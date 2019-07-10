@@ -795,8 +795,8 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
    else
    {
       PwmGeneration::SetCurrentLimitThreshold(Param::Get(Param::ocurlim));
-      PwmGeneration::SetControllerGains(Param::Get(Param::curdkp), Param::Get(Param::curdki),
-                                        Param::Get(Param::curqkp), Param::Get(Param::curqki));
+      PwmGeneration::SetControllerGains(Param::GetInt(Param::curdkp), Param::GetInt(Param::curdki),
+                                        Param::GetInt(Param::curqkp), Param::GetInt(Param::curqki));
 
       Encoder::SetMode((enum Encoder::mode)Param::GetInt(Param::encmode));
       Encoder::SetImpulsesPerTurn(Param::GetInt(Param::numimp));

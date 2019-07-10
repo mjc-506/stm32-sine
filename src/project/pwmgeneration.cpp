@@ -49,18 +49,18 @@ static bool tripped;
 static s32fp ilofs[2];
 static uint16_t execTicks = 0;
 static s32fp idref = 0, iqref = 0;
-static s32fp curdkp, curqkp, curdki, curqki;
+static int curdkp, curqkp, curdki, curqki;
 static s32fp sumq = 0, sumd = 0;
 
-int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, s32fp kp, s32fp ki)
+int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, int kp, int ki)
 {
    s32fp err = refVal - curVal;
 
    sum += err;
-   sum = MAX(FP_FROMINT(-1000000), sum);
-   sum = MIN(FP_FROMINT(1000000), sum);
+   sum = MAX(FP_FROMINT(-50000000), sum);
+   sum = MIN(FP_FROMINT(50000000), sum);
 
-   return FP_TOINT(FP_MUL(err, kp) + FP_MUL(sum, ki) / pwmfrq);
+   return err * kp + (sum * ki) / pwmfrq;
 }
 
 void PwmGeneration::Run()
@@ -96,6 +96,8 @@ void PwmGeneration::Run()
       if (0 == iqref || 0 == dir)
       {
          timer_disable_break_main_output(PWM_TIMER);
+         sumd = 0;
+         sumq = 0;
       }
       else
       {
@@ -155,7 +157,7 @@ void PwmGeneration::SetCurrents(s32fp id, s32fp iq)
    iqref = iq;
 }
 
-void PwmGeneration::SetControllerGains(s32fp dkp, s32fp dki, s32fp qkp, s32fp qki)
+void PwmGeneration::SetControllerGains(int dkp, int dki, int qkp, int qki)
 {
    curdkp = dkp;
    curdki = dki;
