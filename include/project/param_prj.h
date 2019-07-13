@@ -25,13 +25,13 @@
 //Next param id (increase when adding new parameter!): 112
 /*              category     name         unit       min     max     default id */
 #define PARAM_LIST \
-    PARAM_ENTRY(CAT_MOTOR,   curqkp,       "",        0,      10000,  2,      107   ) \
-    PARAM_ENTRY(CAT_MOTOR,   curqki,       "",        0,      10000,  0,      108   ) \
-    PARAM_ENTRY(CAT_MOTOR,   curdkp,       "",        0,      10000,  2,      110   ) \
-    PARAM_ENTRY(CAT_MOTOR,   curdki,       "",        0,      10000,  0,      111   ) \
+    PARAM_ENTRY(CAT_MOTOR,   curqkp,       "",       0,      10000,  128,    107 ) \
+    PARAM_ENTRY(CAT_MOTOR,   curqki,       "",       0,      10000,  256,    108 ) \
+    PARAM_ENTRY(CAT_MOTOR,   curdkp,       "",       0,      10000,  128,    110 ) \
+    PARAM_ENTRY(CAT_MOTOR,   curdki,       "",       0,      10000,  256,    111 ) \
     PARAM_ENTRY(CAT_MOTOR,   boost,       "dig",     0,      37813,  1700,   1   ) \
     PARAM_ENTRY(CAT_MOTOR,   fweak,       "Hz",      0,      1000,   90,     2   ) \
-    PARAM_ENTRY(CAT_MOTOR,   fconst,      "Hz",      0,      1000,   180,    99   ) \
+    PARAM_ENTRY(CAT_MOTOR,   fconst,      "Hz",      0,      1000,   180,    99  ) \
     PARAM_ENTRY(CAT_MOTOR,   udcnom,      "V",       0,      1000,   0,      78  ) \
     PARAM_ENTRY(CAT_MOTOR,   fslipmin,    "Hz",      0,      10,     1,      37  ) \
     PARAM_ENTRY(CAT_MOTOR,   fslipmax,    "Hz",      0,      10,     3,      33  ) \
@@ -179,7 +179,7 @@
 #define CANIOS       "1=Cruise, 2=Start, 4=Brake, 8=Fwd, 16=Rev, 32=Bms"
 #define CANPERIODS   "0=100ms, 1=10ms"
 #define HWREVS       "0=Rev1, 1=Rev2, 2=Rev3, 3=Tesla"
-#define SWAPS        "1=Currents12, 2=ResolverSinCos, 4=PWMOutput12"
+#define SWAPS        "1=Currents12, 4=PWMOutput12"
 #define CAT_MOTOR    "Motor"
 #define CAT_INVERTER "Inverter"
 #define CAT_THROTTLE "Throttle"
@@ -198,7 +198,7 @@
 #define CAN_PERIOD_100MS    0
 #define CAN_PERIOD_10MS     1
 
-#define VER 4.27.R
+#define VER 4.30.B
 #define VERSTR STRINGIFY(4=VER)
 
 enum _potmodes

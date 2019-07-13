@@ -3,8 +3,8 @@
 
 #include "hwdefs.h"
 
-#define NUM_SAMPLES 12
-#define SAMPLE_TIME ADC_SMPR_SMP_7DOT5CYC
+#define NUM_SAMPLES 3
+#define SAMPLE_TIME ADC_SMPR_SMP_1DOT5CYC
 
 #define ANA_IN_LIST \
    ANA_IN_ENTRY(throttle1, GPIOC, 1) \

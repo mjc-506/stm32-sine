@@ -51,16 +51,17 @@ static uint16_t execTicks = 0;
 static s32fp idref = 0, iqref = 0;
 static int curdkp, curqkp, curdki, curqki;
 static s32fp sumq = 0, sumd = 0;
+static int initwait = 0;
 
 int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, int kp, int ki)
 {
    s32fp err = refVal - curVal;
 
    sum += err;
-   sum = MAX(FP_FROMINT(-50000000), sum);
-   sum = MIN(FP_FROMINT(50000000), sum);
+   sum = MAX(FP_FROMINT(-100000), sum);
+   sum = MIN(FP_FROMINT(100000), sum);
 
-   return err * kp + (sum * ki) / pwmfrq;
+   return FP_TOINT(err * kp + (sum * ki) / pwmfrq);
 }
 
 void PwmGeneration::Run()
@@ -71,14 +72,6 @@ void PwmGeneration::Run()
       uint16_t dc[3];
       s32fp id, iq;
 
-      Encoder::UpdateRotorAngle(dir);
-      //8us
-      if (opmode == MOD_SINE)
-         CalcNextAngleConstant(dir);
-      else if (Encoder::IsSyncMode())
-         CalcNextAngleSync(dir);
-      else
-         CalcNextAngleAsync(dir);
       //11.5us
       ProcessCurrents(id, iq);
       //27.8us
@@ -92,8 +85,17 @@ void PwmGeneration::Run()
       Param::SetInt(Param::ud, ud);
       Param::SetInt(Param::uq, uq);
 
+      Encoder::UpdateRotorAngle(dir);
+      //8us
+      if (opmode == MOD_SINE)
+         CalcNextAngleConstant(dir);
+      else if (Encoder::IsSyncMode())
+         CalcNextAngleSync(dir);
+      else
+         CalcNextAngleAsync(dir);
+
       /* Shut down PWM on zero voltage request */
-      if (0 == iqref || 0 == dir)
+      if (0 == iqref || 0 == dir || initwait > 0)
       {
          timer_disable_break_main_output(PWM_TIMER);
          sumd = 0;
@@ -122,6 +124,8 @@ void PwmGeneration::Run()
          timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
          timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
       }
+
+      initwait = initwait > 0 ? initwait - 1 : 0;
       //37us
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
@@ -318,7 +322,7 @@ void PwmGeneration::CalcNextAngleSync(int dir)
 {
    if (Encoder::SeenNorthSignal())
    {
-      uint32_t polePairs = Param::GetInt(Param::polepairs) / Param::GetInt(Param::respolepairs);
+      uint16_t polePairs = Param::GetInt(Param::polepairs) / Param::GetInt(Param::respolepairs);
       uint16_t syncOfs = Param::GetInt(Param::syncofs);
       uint16_t rotorAngle = Encoder::GetRotorAngle();
       int16_t syncAdv = FP_TOINT(FP_MUL(Param::Get(Param::syncadv), frq));
@@ -397,51 +401,10 @@ void PwmGeneration::PwmInit()
    shiftForTimer = SineCore::BITS - pwmdigits;
    tripped = false;
    Encoder::SetPwmFrequency(pwmfrq);
+   initwait = 10000;
 
    if (opmode == MOD_ACHEAT)
       AcHeatTimerSetup();
-}
-
-/*static s32fp LimitCurrent()
-{
-   static s32fp curLimSpntFiltered = 0, slipFiltered = 0;
-   s32fp slipmin = Param::Get(Param::fslipmin);
-   s32fp imax = Param::Get(Param::iacmax);
-   s32fp ilMax = ProcessCurrents();
-
-   s32fp a = imax / 20; //Start acting at 80% of imax
-   s32fp imargin = imax - ilMax;
-   s32fp curLimSpnt = FP_DIV(100 * imargin, a);
-   s32fp slipSpnt = FP_DIV(FP_MUL(fslip, imargin), a);
-   slipSpnt = MAX(slipmin, slipSpnt);
-   curLimSpnt = MAX(FP_FROMINT(40), curLimSpnt); //Never go below 40%
-   int filter = Param::GetInt(curLimSpnt < curLimSpntFiltered ? Param::ifltfall : Param::ifltrise);
-   curLimSpntFiltered = IIRFILTER(curLimSpntFiltered, curLimSpnt, filter);
-   slipFiltered = IIRFILTER(slipFiltered, slipSpnt, 1);
-
-   s32fp ampNomLimited = MIN(ampnom, curLimSpntFiltered);
-   slipSpnt = MIN(fslip, slipFiltered);
-   slipIncr = FRQ_TO_ANGLE(slipSpnt);
-
-   if (ampNomLimited < ampnom)
-      ErrorMessage::Post(ERR_CURRENTLIMIT);
-
-   return ampNomLimited;
-}*/
-
-s32fp PwmGeneration::GetIlMax(s32fp il1, s32fp il2)
-{
-   s32fp il3 = -il1 - il2;
-   s32fp offset = SineCore::CalcSVPWMOffset(il1, il2, il3) / 2;
-   offset = ABS(offset);
-   il1 = ABS(il1);
-   il2 = ABS(il2);
-   il3 = ABS(il3);
-   s32fp ilMax = MAX(il1, il2);
-   ilMax = MAX(ilMax, il3);
-   ilMax -= offset;
-
-   return ilMax;
 }
 
 s32fp PwmGeneration::GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain)
@@ -451,89 +414,30 @@ s32fp PwmGeneration::GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain)
    return FP_DIV(il, gain);
 }
 
-PwmGeneration::EdgeType PwmGeneration::CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, int& samples, s32fp prevRms)
-{
-   const s32fp oneOverSqrt2 = FP_FROMFLT(0.707106781187);
-   int minSamples = pwmfrq / (4 * FP_TOINT(frq) + 1);
-   EdgeType edgeType = NoEdge;
-
-   minSamples = MAX(10, minSamples);
-
-   if (samples > minSamples)
-   {
-      if (lastEdge == NegEdge && il > 0)
-         edgeType = PosEdge;
-      else if (lastEdge == PosEdge && il < 0)
-         edgeType = NegEdge;
-   }
-
-   if (edgeType != NoEdge)
-   {
-      rms = (FP_MUL(oneOverSqrt2, max) + prevRms) / 2; // average with previous rms reading
-
-      max = 0;
-      samples = 0;
-      lastEdge = edgeType;
-   }
-
-   il = ABS(il);
-   max = MAX(il, max);
-   samples++;
-
-   return edgeType;
-}
-
 s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
 {
-   static s32fp currentMax[2];
-   static int samples[2] = { 0 };
-   static int sign = 1;
-   static EdgeType lastEdge[2] = { PosEdge, PosEdge };
-
-   s32fp il1 = GetCurrent(AnaIn::il1, ilofs[0], Param::Get(Param::il1gain));
-   s32fp il2 = GetCurrent(AnaIn::il2, ilofs[1], Param::Get(Param::il2gain));
-   /*s32fp rms;
-   s32fp il1PrevRms = Param::Get(Param::il1rms);
-   s32fp il2PrevRms = Param::Get(Param::il2rms);
-   EdgeType edge = CalcRms(il1, lastEdge[0], currentMax[0], rms, samples[0], il1PrevRms);
-
-   if (edge != NoEdge)
+   if (initwait > 0)
    {
-      Param::SetFlt(Param::il1rms, rms);
-
-      if (((angle + Param::GetInt(Param::dirdet)) & 0xFFFF) > SHIFT_180DEG)
-         sign = edge == PosEdge ? -1 : 1;
-      else
-         sign = edge == NegEdge ? -1 : 1;
-
-      if (opmode != MOD_BOOST || opmode != MOD_BUCK)
-      {
-         //rough approximation as we do not take power factor into account
-         s32fp idc = (SineCore::GetAmp() * rms) / SineCore::MAXAMP;
-         idc = FP_DIV(idc, FP_FROMFLT(1.2247)); //divide by sqrt(3)/sqrt(2)
-         idc *= sign; //fslip < 0 ? -1 : 1;
-         Param::SetFlt(Param::idc, idc);
-      }
+      SetCurrentOffset(AnaIn::Get(AnaIn::il1), AnaIn::Get(AnaIn::il2));
    }
-   if (CalcRms(il2, lastEdge[1], currentMax[1], rms, samples[1], il2PrevRms))
-   {
-      Param::SetFlt(Param::il2rms, rms);
-   }
-
-   s32fp ilMax = sign * GetIlMax(il1, il2);*/
-
-   if ((Param::GetInt(Param::pinswap) & SWAP_CURRENTS) > 0)
-      FOC::ParkClarke(il2, il1, angle);
    else
-      FOC::ParkClarke(il1, il2, angle);
-   id = FOC::id;
-   iq = FOC::iq;
+   {
+      s32fp il1 = GetCurrent(AnaIn::il1, ilofs[0], Param::Get(Param::il1gain));
+      s32fp il2 = GetCurrent(AnaIn::il2, ilofs[1], Param::Get(Param::il2gain));
 
-   Param::SetFlt(Param::id, FOC::id);
-   Param::SetFlt(Param::iq, FOC::iq);
-   Param::SetFlt(Param::il1, il1);
-   Param::SetFlt(Param::il2, il2);
-   //Param::SetFlt(Param::ilmax, ilMax);
+      if ((Param::GetInt(Param::pinswap) & SWAP_CURRENTS) > 0)
+         FOC::ParkClarke(il2, il1, angle);
+      else
+         FOC::ParkClarke(il1, il2, angle);
+      id = FOC::id;
+      iq = FOC::iq;
+
+      Param::SetFlt(Param::id, FOC::id);
+      Param::SetFlt(Param::iq, FOC::iq);
+      Param::SetFlt(Param::il1, il1);
+      Param::SetFlt(Param::il2, il2);
+      //Param::SetFlt(Param::ilmax, ilMax);
+   }
 
    return 0;//ilMax;
 }

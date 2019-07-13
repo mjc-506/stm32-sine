@@ -51,7 +51,6 @@ HWREV hwRev; //Hardware variant of board we are running on
 
 //Precise control of executing the boost controller
 static bool runChargeControl = false;
-static s32fp slowThrottleCommmand = 0;
 static Stm32Scheduler* scheduler;
 
 static void PostErrorIfRunning(ERROR_MESSAGE_NUM err)
@@ -561,7 +560,6 @@ static void ProcessThrottle()
       Throttle::BmsLimitCommand(finalSpnt, Param::GetBool(Param::din_bms));
 
    Throttle::UdcLimitCommand(finalSpnt, Param::Get(Param::udc));
-   //Throttle::IdcLimitCommand(finalSpnt, Param::Get(Param::idc));
 
    if (Throttle::TemperatureDerate(Param::Get(Param::tmphs), finalSpnt))
    {
@@ -569,18 +567,18 @@ static void ProcessThrottle()
       ErrorMessage::Post(ERR_TMPHSMAX);
    }
 
-   slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, 4);
+   //slowThrottleCommmand = IIRFILTER(slowThrottleCommmand, finalSpnt, 4);
 
 
-   if (Encoder::GetRotorFrequency() < (u32fp)brkrampstr && slowThrottleCommmand < 0)
+   if (Encoder::GetRotorFrequency() < (u32fp)brkrampstr && finalSpnt < 0)
    {
-      slowThrottleCommmand = FP_MUL((s32fp)FP_DIV(Encoder::GetRotorFrequency(), brkrampstr), slowThrottleCommmand);
+      finalSpnt = FP_MUL((s32fp)FP_DIV(Encoder::GetRotorFrequency(), brkrampstr), finalSpnt);
    }
 
-   Param::SetFlt(Param::potnom, slowThrottleCommmand);
+   Param::SetFlt(Param::potnom, finalSpnt);
 
-   s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(slowThrottleCommmand));
-   s32fp iq = FP_MUL(Param::Get(Param::throtiq), slowThrottleCommmand);
+   s32fp id = FP_MUL(Param::Get(Param::throtid), ABS(finalSpnt));
+   s32fp iq = FP_MUL(Param::Get(Param::throtiq), Param::GetInt(Param::dir) * finalSpnt);
    PwmGeneration::SetCurrents(id, iq);
 }
 
@@ -626,7 +624,7 @@ static void Ms10Task(void)
 
    if (MOD_RUN == opmode)
    {
-      CalcAmpAndSlip(slowThrottleCommmand);
+      //CalcAmpAndSlip(slowThrottleCommmand);
    }
    else if (MOD_OFF == opmode)
    {
@@ -800,7 +798,6 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
 
       Encoder::SetMode((enum Encoder::mode)Param::GetInt(Param::encmode));
       Encoder::SetImpulsesPerTurn(Param::GetInt(Param::numimp));
-      Encoder::SwapSinCos((Param::GetInt(Param::pinswap) & SWAP_RESOLVER) > 0);
 
       MotorVoltage::SetMinFrq(Param::Get(Param::fmin));
       MotorVoltage::SetMaxFrq(Param::Get(Param::fmax));

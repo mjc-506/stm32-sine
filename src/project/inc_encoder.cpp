@@ -72,7 +72,6 @@ static enum Encoder::mode encMode = Encoder::INVALID;
 static bool seenNorthSignal = false;
 static uint32_t turnsSinceLastSample = 0;
 static int32_t minSin = 0, maxSin = 0, startupDelay;
-static bool resolverInputSwap = false;
 
 void Encoder::Reset()
 {
@@ -141,11 +140,6 @@ void Encoder::SetImpulsesPerTurn(uint16_t imp)
 
    if (encMode == AB || encMode == ABZ)
       InitTimerABZMode();
-}
-
-void Encoder::SwapSinCos(bool swap)
-{
-   resolverInputSwap = swap;
 }
 
 void Encoder::UpdateRotorAngle(int dir)
@@ -413,12 +407,6 @@ void Encoder::InitResolverMode()
 {
    uint8_t channels[3] = { 0, 6, 7 };
 
-   if (resolverInputSwap)
-   {
-      channels[1] = channels[2];
-      channels[2] = 6;
-   }
-
    adc_set_injected_sequence(ADC1, sizeof(channels), channels);
    adc_enable_external_trigger_injected(ADC1, ADC_CR2_JEXTSEL_JSWSTART);
    adc_set_sample_time(ADC1, 6, ADC_SMPR_SMP_1DOT5CYC);
@@ -439,6 +427,8 @@ void Encoder::InitResolverMode()
       timer_direction_up(REV_CNT_TIMER);
       timer_generate_event(REV_CNT_TIMER, TIM_EGR_UG);
       gpio_set_mode(GPIOD, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO2);
+      adc_set_injected_offset(ADC1, 2, 0);
+      adc_set_injected_offset(ADC1, 3, 0);
 
       adc_start_conversion_injected(ADC1); //Determine offset
 
@@ -530,8 +520,8 @@ uint16_t Encoder::GetAngleSinCos()
 
 uint16_t Encoder::DecodeAngle(bool invert)
 {
-   int sin = adc_read_injected(ADC1, 2);
-   int cos = adc_read_injected(ADC1, 3);
+   int sin = adc_read_injected(ADC1, 3);
+   int cos = adc_read_injected(ADC1, 2);
 
    minSin = MIN(sin, minSin);
    maxSin = MAX(sin, maxSin);
