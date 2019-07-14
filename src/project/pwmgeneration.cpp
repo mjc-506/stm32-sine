@@ -124,18 +124,18 @@ void PwmGeneration::Run()
          timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
          timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
       }
-
-      initwait = initwait > 0 ? initwait - 1 : 0;
       //37us
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
    {
       s32fp id, iq;
+      initwait = 0;
       ProcessCurrents(id, iq);
       Charge();
    }
    else if (opmode == MOD_ACHEAT)
    {
+      initwait = 0;
       AcHeat();
    }
 }
@@ -418,6 +418,7 @@ s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
 {
    if (initwait > 0)
    {
+      initwait--;
       SetCurrentOffset(AnaIn::Get(AnaIn::il1), AnaIn::Get(AnaIn::il2));
    }
    else
