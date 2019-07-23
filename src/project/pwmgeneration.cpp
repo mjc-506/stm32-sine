@@ -83,8 +83,8 @@ void PwmGeneration::Run()
 
       ProcessCurrents(id, iq);
 
-      s32fp ud = PiController(idref, id, sumd, curdkp, curdki);
-      s32fp uq = PiController(iqref, iq, sumq, curqkp, curqki);
+      int32_t ud = PiController(idref, id, sumd, curdkp, curdki);
+      int32_t uq = PiController(iqref, iq, sumq, curqkp, curqki);
       FOC::LimitVoltages(ud, uq);
       FOC::InvParkClarke(ud, uq, angle);
 

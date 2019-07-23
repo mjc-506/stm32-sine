@@ -198,7 +198,7 @@
 #define CAN_PERIOD_100MS    0
 #define CAN_PERIOD_10MS     1
 
-#define VER 4.31.B
+#define VER 4.32.B
 #define VERSTR STRINGIFY(4=VER)
 
 enum _potmodes
