@@ -73,7 +73,7 @@ void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
 
    //Inverse Park transformation
    s32fp ua = (cos * ud - sin * uq) >> CST_DIGITS;
-   s32fp ub = (-sin * ud - cos * uq) >> CST_DIGITS;
+   s32fp ub = (cos * uq + sin * ud) >> CST_DIGITS;
    //Inverse Clarke transformation
    DutyCycles[0] = ua;
    DutyCycles[1] = (-ua + FP_MUL(SQRT3, ub)) / 2;

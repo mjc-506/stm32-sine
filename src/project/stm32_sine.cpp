@@ -798,6 +798,7 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
 
       Encoder::SetMode((enum Encoder::mode)Param::GetInt(Param::encmode));
       Encoder::SetImpulsesPerTurn(Param::GetInt(Param::numimp));
+      Encoder::SwapSinCos((Param::GetInt(Param::pinswap) & SWAP_RESOLVER) > 0);
 
       MotorVoltage::SetMinFrq(Param::Get(Param::fmin));
       MotorVoltage::SetMaxFrq(Param::Get(Param::fmax));

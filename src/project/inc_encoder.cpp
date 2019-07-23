@@ -72,6 +72,7 @@ static enum Encoder::mode encMode = Encoder::INVALID;
 static bool seenNorthSignal = false;
 static uint32_t turnsSinceLastSample = 0;
 static int32_t minSin = 0, maxSin = 0, startupDelay;
+static int sinChan = 3, cosChan = 2;
 
 void Encoder::Reset()
 {
@@ -140,6 +141,20 @@ void Encoder::SetImpulsesPerTurn(uint16_t imp)
 
    if (encMode == AB || encMode == ABZ)
       InitTimerABZMode();
+}
+
+void Encoder::SwapSinCos(bool swap)
+{
+   if (swap)
+   {
+      sinChan = 2;
+      cosChan = 3;
+   }
+   else
+   {
+      sinChan = 3;
+      cosChan = 2;
+   }
 }
 
 void Encoder::UpdateRotorAngle(int dir)
@@ -520,8 +535,8 @@ uint16_t Encoder::GetAngleSinCos()
 
 uint16_t Encoder::DecodeAngle(bool invert)
 {
-   int sin = adc_read_injected(ADC1, 3);
-   int cos = adc_read_injected(ADC1, 2);
+   int sin = adc_read_injected(ADC1, sinChan);
+   int cos = adc_read_injected(ADC1, cosChan);
 
    minSin = MIN(sin, minSin);
    maxSin = MAX(sin, maxSin);

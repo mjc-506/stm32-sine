@@ -58,10 +58,10 @@ int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, int 
    s32fp err = refVal - curVal;
 
    sum += err;
-   sum = MAX(FP_FROMINT(-100000), sum);
-   sum = MIN(FP_FROMINT(100000), sum);
+   sum = MAX(FP_FROMINT(-1000000), sum);
+   sum = MIN(FP_FROMINT(1000000), sum);
 
-   return FP_TOINT(err * kp + (sum * ki) / pwmfrq);
+   return FP_TOINT(err * kp + (sum / pwmfrq) * ki);
 }
 
 void PwmGeneration::Run()
@@ -72,27 +72,26 @@ void PwmGeneration::Run()
       uint16_t dc[3];
       s32fp id, iq;
 
-      //11.5us
-      ProcessCurrents(id, iq);
-      //27.8us
-      s32fp ud = PiController(idref, id, sumd, curdkp, curdki);
-      s32fp uq = PiController(iqref, iq, sumq, curqkp, curqki);
-      FOC::LimitVoltages(ud, uq);
-      FOC::InvParkClarke(ud, uq, angle);
-      //35us
-      Param::SetFlt(Param::fstat, frq);
-      Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
-      Param::SetInt(Param::ud, ud);
-      Param::SetInt(Param::uq, uq);
-
       Encoder::UpdateRotorAngle(dir);
-      //8us
+
       if (opmode == MOD_SINE)
          CalcNextAngleConstant(dir);
       else if (Encoder::IsSyncMode())
          CalcNextAngleSync(dir);
       else
          CalcNextAngleAsync(dir);
+
+      ProcessCurrents(id, iq);
+
+      s32fp ud = PiController(idref, id, sumd, curdkp, curdki);
+      s32fp uq = PiController(iqref, iq, sumq, curqkp, curqki);
+      FOC::LimitVoltages(ud, uq);
+      FOC::InvParkClarke(ud, uq, angle);
+
+      Param::SetFlt(Param::fstat, frq);
+      Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
+      Param::SetInt(Param::ud, ud);
+      Param::SetInt(Param::uq, uq);
 
       /* Shut down PWM on zero voltage request */
       if (0 == iqref || 0 == dir || initwait > 0)
@@ -114,9 +113,9 @@ void PwmGeneration::Run()
 
       if ((Param::GetInt(Param::pinswap) & SWAP_PWM) > 0)
       {
-         timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[1]);
-         timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[0]);
-         timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC1, dc[2]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
+         timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[0]);
       }
       else
       {
@@ -124,7 +123,6 @@ void PwmGeneration::Run()
          timer_set_oc_value(PWM_TIMER, TIM_OC2, dc[1]);
          timer_set_oc_value(PWM_TIMER, TIM_OC3, dc[2]);
       }
-      //37us
    }
    else if (opmode == MOD_BOOST || opmode == MOD_BUCK)
    {
