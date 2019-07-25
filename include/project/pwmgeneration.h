@@ -54,7 +54,6 @@ class PwmGeneration
       static s32fp GetIlMax(s32fp il1, s32fp il2);
       static s32fp GetCurrent(AnaIn::AnaIns input, s32fp offset, s32fp gain);
       static EdgeType CalcRms(s32fp il, EdgeType& lastEdge, s32fp& max, s32fp& rms, int& samples, s32fp prevRms);
-      static int32_t PiController(s32fp refVal, s32fp curVal, s32fp& sum, int kp, int ki);
 };
 
 #endif // PWMGENERATION_H

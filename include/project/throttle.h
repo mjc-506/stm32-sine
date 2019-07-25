@@ -36,19 +36,20 @@ class Throttle
       static void BmsLimitCommand(s32fp& finalSpnt, bool dinbms);
       static void UdcLimitCommand(s32fp& finalSpnt, s32fp udc);
       static void IdcLimitCommand(s32fp& finalSpnt, s32fp idc);
+      static void FrequencyLimitCommand(s32fp& finalSpnt, s32fp frequency);
       static int potmin[2];
       static int potmax[2];
-      static int brknom;
-      static int brknompedal;
-      static int brkmax;
-      static int throtmax;
+      static s32fp brknom;
+      static s32fp brknompedal;
+      static s32fp brkmax;
+      static s32fp throtmax;
       static int idleSpeed;
       static int cruiseSpeed;
       static s32fp speedkp;
       static int speedflt;
       static s32fp idleThrotLim;
-      static int brkPedalRamp;
-      static int throttleRamp;
+      static s32fp brkPedalRamp;
+      static s32fp throttleRamp;
       static int bmslimhigh;
       static int bmslimlow;
       static int accelmax;
@@ -57,12 +58,13 @@ class Throttle
       static s32fp udcmax;
       static s32fp idcmin;
       static s32fp idcmax;
+      static s32fp fmax;
 
    private:
       static int speedFiltered;
       static s32fp potnomFiltered;
-      static int brkRamped;
-      static int throttleRamped;
+      static s32fp brkRamped;
+      static s32fp throttleRamped;
 };
 
 #endif // THROTTLE_H

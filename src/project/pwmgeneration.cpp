@@ -29,6 +29,7 @@
 #include "anain.h"
 #include "my_math.h"
 #include "foc.h"
+#include "picontroller.h"
 
 #define SHIFT_180DEG (uint16_t)32768
 #define SHIFT_90DEG  (uint16_t)16384
@@ -48,21 +49,10 @@ static int opmode;
 static bool tripped;
 static s32fp ilofs[2];
 static uint16_t execTicks = 0;
-static s32fp idref = 0, iqref = 0;
-static int curdkp, curqkp, curdki, curqki;
-static s32fp sumq = 0, sumd = 0;
+static s32fp idref = 0;
 static int initwait = 0;
-
-int32_t PwmGeneration::PiController(s32fp refVal, s32fp curVal, s32fp& sum, int kp, int ki)
-{
-   s32fp err = refVal - curVal;
-
-   sum += err;
-   sum = MAX(FP_FROMINT(-1000000), sum);
-   sum = MIN(FP_FROMINT(1000000), sum);
-
-   return FP_TOINT(err * kp + (sum / pwmfrq) * ki);
-}
+static PiController qController;
+static PiController dController;
 
 void PwmGeneration::Run()
 {
@@ -71,6 +61,7 @@ void PwmGeneration::Run()
       int dir = Param::GetInt(Param::dir);
       uint16_t dc[3];
       s32fp id, iq;
+      s32fp fweak = Param::Get(Param::fweak);
 
       Encoder::UpdateRotorAngle(dir);
 
@@ -81,24 +72,38 @@ void PwmGeneration::Run()
       else
          CalcNextAngleAsync(dir);
 
+      if (frq > fweak)
+      {
+         s32fp idweak = FP_MUL(Param::Get(Param::idweak), frq - fweak);
+         dController.Setpoint(idweak + idref);
+      }
+      else
+      {
+         dController.Setpoint(idref);
+      }
+
       ProcessCurrents(id, iq);
 
-      int32_t ud = PiController(idref, id, sumd, curdkp, curdki);
-      int32_t uq = PiController(iqref, iq, sumq, curqkp, curqki);
-      FOC::LimitVoltages(ud, uq);
+      int32_t ud = dController.Run(id);
+      int32_t uq = qController.Run(iq);
+      int32_t qlimit = FOC::LimitVoltages(ud, uq);
+      qController.SetMaxY(qlimit);
       FOC::InvParkClarke(ud, uq, angle);
+
+      s32fp idc = (iq * uq) / FOC::GetMaximumModulationIndex();
 
       Param::SetFlt(Param::fstat, frq);
       Param::SetFlt(Param::angle, DIGIT_TO_DEGREE(angle));
       Param::SetInt(Param::ud, ud);
       Param::SetInt(Param::uq, uq);
+      Param::SetFlt(Param::idc, idc);
 
-      /* Shut down PWM on zero voltage request */
-      if (0 == iqref || 0 == dir || initwait > 0)
+      /* Shut down PWM on stopped motor, neutral gear or init phase */
+      if ((0 == frq && 0 == idref) || 0 == dir || initwait > 0)
       {
          timer_disable_break_main_output(PWM_TIMER);
-         sumd = 0;
-         sumq = 0;
+         dController.ResetIntegrator();
+         qController.ResetIntegrator();
       }
       else
       {
@@ -155,16 +160,14 @@ void PwmGeneration::SetAmpnom(s32fp amp)
 
 void PwmGeneration::SetCurrents(s32fp id, s32fp iq)
 {
-   idref = id;
-   iqref = iq;
+   idref = id; //d-regulator set point is programmed in Run()
+   qController.Setpoint(iq);
 }
 
 void PwmGeneration::SetControllerGains(int dkp, int dki, int qkp, int qki)
 {
-   curdkp = dkp;
-   curdki = dki;
-   curqkp = qkp;
-   curqki = qki;
+   qController.SetGains(qkp, qki);
+   dController.SetGains(dkp, dki);
 }
 
 void PwmGeneration::SetFslip(s32fp _fslip)
@@ -202,10 +205,6 @@ void PwmGeneration::SetOpmode(int _opmode)
 
    if (opmode != MOD_OFF)
    {
-      sumd = 0;
-      sumq = 0;
-      FOC::id = 0;
-      FOC::iq = 0;
       PwmInit();
    }
 
@@ -323,9 +322,6 @@ void PwmGeneration::CalcNextAngleSync(int dir)
       uint16_t polePairs = Param::GetInt(Param::polepairs) / Param::GetInt(Param::respolepairs);
       uint16_t syncOfs = Param::GetInt(Param::syncofs);
       uint16_t rotorAngle = Encoder::GetRotorAngle();
-      int16_t syncAdv = FP_TOINT(FP_MUL(Param::Get(Param::syncadv), frq));
-
-      syncOfs += syncAdv;
 
       angle = polePairs * rotorAngle + syncOfs;
       frq = polePairs * Encoder::GetRotorFrequency();
@@ -399,7 +395,13 @@ void PwmGeneration::PwmInit()
    shiftForTimer = SineCore::BITS - pwmdigits;
    tripped = false;
    Encoder::SetPwmFrequency(pwmfrq);
-   initwait = 10000;
+   initwait = 5000;
+   qController.ResetIntegrator();
+   qController.SetCallingFrequency(pwmfrq);
+   qController.SetMaxY(FOC::GetMaximumModulationIndex());
+   dController.ResetIntegrator();
+   dController.SetCallingFrequency(pwmfrq);
+   dController.SetMaxY(FOC::GetMaximumModulationIndex());
 
    if (opmode == MOD_ACHEAT)
       AcHeatTimerSetup();
@@ -435,10 +437,9 @@ s32fp PwmGeneration::ProcessCurrents(s32fp& id, s32fp& iq)
       Param::SetFlt(Param::iq, FOC::iq);
       Param::SetFlt(Param::il1, il1);
       Param::SetFlt(Param::il2, il2);
-      //Param::SetFlt(Param::ilmax, ilMax);
    }
 
-   return 0;//ilMax;
+   return 0;
 }
 
 /**

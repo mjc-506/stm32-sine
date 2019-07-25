@@ -40,7 +40,8 @@ LDSCRIPT	= $(BINARY).ld
 LDFLAGS  = -Llibopencm3/lib -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections,-Map,linker.map
 OBJSL		= $(BINARY).o foc.o hwinit.o stm32scheduler.o params.o terminal.o terminal_prj.o \
            my_string.o digio.o sine_core.o my_fp.o fu.o inc_encoder.o printf.o anain.o \
-           temp_meas.o param_save.o throttle.o errormessage.o stm32_can.o pwmgeneration.o
+           temp_meas.o param_save.o throttle.o errormessage.o stm32_can.o pwmgeneration.o \
+           picontroller.o
 OBJS     = $(subst $(space),$(space)$(OUT_DIR)/, $(OBJSL))
 vpath %.c src/project src/generic
 vpath %.cpp src/project src/generic

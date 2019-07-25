@@ -22,15 +22,16 @@
 #include "foc.h"
 #include "sine_core.h"
 
-#define SQRT3           FP_FROMFLT(1.732050807568877293527446315059)
+#define SQRT3 FP_FROMFLT(1.732050807568877293527446315059)
 
+static const u32fp sqrt3 = SQRT3;
 static const s32fp sqrt3inv1 = FP_FROMFLT(0.57735026919); //1/sqrt(3)
 static const s32fp sqrt3inv2 = 2*sqrt3inv1; //2/sqrt(2)
 static const s32fp zeroOffset = FP_FROMINT(1);
-static const int32_t modMax = FP_DIV(FP_FROMINT(2U), (uint32_t)SQRT3);
+static const int32_t modMax = FP_DIV(FP_FROMINT(2U), sqrt3);
+static const int32_t modMaxPow2 = modMax * modMax;
 static int32_t minPulse = 1000;
 static int32_t maxPulse = FP_FROMINT(2) - 1000;
-
 
 s32fp FOC::id;
 s32fp FOC::iq;
@@ -54,10 +55,6 @@ void FOC::ParkClarke(s32fp il1, s32fp il2, uint16_t angle)
 
 int32_t FOC::LimitVoltages(int32_t& ud, int32_t& uq)
 {
-   //const int32_t modMax = 37813;
-   const int32_t modMaxPow2 = modMax * modMax;
-   //const int32_t modMaxSqrt2 = 26737;
-
    ud = MIN(ud, modMax);
    ud = MAX(ud, -modMax);
 
@@ -89,7 +86,7 @@ void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
       DutyCycles[i] -= offset;
       /* Shift above 0 */
       DutyCycles[i] += zeroOffset;
-      /* Short pulse supression */
+      /* Short pulse suppression */
       if (DutyCycles[i] < minPulse)
       {
          DutyCycles[i] = 0U;
@@ -99,6 +96,11 @@ void FOC::InvParkClarke(int32_t ud, int32_t uq, uint16_t angle)
          DutyCycles[i] = FP_FROMINT(2);
       }
    }
+}
+
+int32_t FOC::GetMaximumModulationIndex()
+{
+   return modMax;
 }
 
 uint32_t FOC::sqrt(uint32_t rad)

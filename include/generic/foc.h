@@ -10,6 +10,7 @@ class FOC
       static void ParkClarke(s32fp il1, s32fp il2, uint16_t angle);
       static int32_t LimitVoltages(int32_t& ud, int32_t& uq);
       static void InvParkClarke(int32_t ud, int32_t uq, uint16_t angle);
+      static int32_t GetMaximumModulationIndex();
       static s32fp id;
       static s32fp iq;
       static int32_t DutyCycles[3];

@@ -17,6 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define VER 4.33.B
+
+
 /* Entries must be ordered as follows:
    1. Saveable parameters (id != 0)
    2. Temporary parameters (id = 0)
@@ -29,13 +32,8 @@
     PARAM_ENTRY(CAT_MOTOR,   curqki,       "",       0,      10000,  256,    108 ) \
     PARAM_ENTRY(CAT_MOTOR,   curdkp,       "",       0,      10000,  128,    110 ) \
     PARAM_ENTRY(CAT_MOTOR,   curdki,       "",       0,      10000,  256,    111 ) \
-    PARAM_ENTRY(CAT_MOTOR,   boost,       "dig",     0,      37813,  1700,   1   ) \
     PARAM_ENTRY(CAT_MOTOR,   fweak,       "Hz",      0,      1000,   90,     2   ) \
-    PARAM_ENTRY(CAT_MOTOR,   fconst,      "Hz",      0,      1000,   180,    99  ) \
-    PARAM_ENTRY(CAT_MOTOR,   udcnom,      "V",       0,      1000,   0,      78  ) \
-    PARAM_ENTRY(CAT_MOTOR,   fslipmin,    "Hz",      0,      10,     1,      37  ) \
-    PARAM_ENTRY(CAT_MOTOR,   fslipmax,    "Hz",      0,      10,     3,      33  ) \
-    PARAM_ENTRY(CAT_MOTOR,   fslipconstmax,"Hz",     0,      10,     5,      100 ) \
+    PARAM_ENTRY(CAT_MOTOR,   idweak,      "A/Hz",    -2,     2,      0,      112 ) \
     PARAM_ENTRY(CAT_MOTOR,   polepairs,   "",        1,      16,     2,      32  ) \
     PARAM_ENTRY(CAT_MOTOR,   respolepairs,"",        1,      16,     1,      93  ) \
     PARAM_ENTRY(CAT_MOTOR,   encmode,     ENCMODES,  0,      5,      0,      75  ) \
@@ -45,7 +43,6 @@
     PARAM_ENTRY(CAT_MOTOR,   dirchrpm,    "rpm",     0,      2000,   100,    87  ) \
     PARAM_ENTRY(CAT_MOTOR,   dirmode,     DIRMODES,  0,      3,      1,      95  ) \
     PARAM_ENTRY(CAT_MOTOR,   syncofs,     "dig",     0,      65535,  0,      70  ) \
-    PARAM_ENTRY(CAT_MOTOR,   syncadv,     "dig/Hz",  -100,   100,    0,      101 ) \
     PARAM_ENTRY(CAT_MOTOR,   snsm,        SNS_M,     12,     14,     12,     46  ) \
     PARAM_ENTRY(CAT_INVERTER,pwmfrq,      PWMFRQS,   0,      4,      1,      13  ) \
     PARAM_ENTRY(CAT_INVERTER,pwmpol,      PWMPOLS,   0,      1,      0,      52  ) \
@@ -77,12 +74,12 @@
     PARAM_ENTRY(CAT_THROTTLE,pot2min,     "dig",     0,      4095,   4095,   63  ) \
     PARAM_ENTRY(CAT_THROTTLE,pot2max,     "dig",     0,      4095,   4095,   64  ) \
     PARAM_ENTRY(CAT_THROTTLE,potmode,     POTMODES,  0,      2,      0,      82  ) \
-    PARAM_ENTRY(CAT_THROTTLE,throtramp,   "%/10ms",  1,      100,    100,    81  ) \
+    PARAM_ENTRY(CAT_THROTTLE,throtramp,   "%/10ms",  0.05,   100,    100,    81  ) \
     PARAM_ENTRY(CAT_THROTTLE,throtramprpm,"rpm",     0,      20000,  20000,  85  ) \
     PARAM_ENTRY(CAT_THROTTLE,ampmin,      "%",       0,      100,    10,     4   ) \
     PARAM_ENTRY(CAT_THROTTLE,slipstart,   "%",       10,     100,    50,     90  ) \
-    PARAM_ENTRY(CAT_THROTTLE,throtiq,     "A/%",     -1000,    1000,     1,     105   ) \
-    PARAM_ENTRY(CAT_THROTTLE,throtid,     "A/%",     -1000,    1000,     1,     106  ) \
+    PARAM_ENTRY(CAT_THROTTLE,throtiq,     "A/%",     -1000,  1000,   1,     105  ) \
+    PARAM_ENTRY(CAT_THROTTLE,throtid,     "A/%",     -1000,  1000,   1,     106  ) \
     PARAM_ENTRY(CAT_REGEN,   brknompedal, "%",       -100,   0,      -50,    38  ) \
     PARAM_ENTRY(CAT_REGEN,   brkpedalramp,"%/10ms",  1,      100,    100,    68  ) \
     PARAM_ENTRY(CAT_REGEN,   brknom,      "%",       0,      100,    30,     19  ) \
@@ -117,10 +114,6 @@
     VALUE_ENTRY(iq,          "A",     2004 ) \
     VALUE_ENTRY(ilmax,       "A",     2005 ) \
     VALUE_ENTRY(uac,         "V",     2006 ) \
-    VALUE_ENTRY(il1rms,      "A",     2007 ) \
-    VALUE_ENTRY(il2rms,      "A",     2008 ) \
-    VALUE_ENTRY(boostcalc,   "dig",   2009 ) \
-    VALUE_ENTRY(fweakcalc,   "Hz",    2010 ) \
     VALUE_ENTRY(fstat,       "Hz",    2011 ) \
     VALUE_ENTRY(speed,       "rpm",   2012 ) \
     VALUE_ENTRY(turns,       "",      2037 ) \
@@ -198,7 +191,6 @@
 #define CAN_PERIOD_100MS    0
 #define CAN_PERIOD_10MS     1
 
-#define VER 4.32.B
 #define VERSTR STRINGIFY(4=VER)
 
 enum _potmodes

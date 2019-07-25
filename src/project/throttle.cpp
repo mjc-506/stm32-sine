@@ -24,9 +24,9 @@
 
 int Throttle::potmin[2];
 int Throttle::potmax[2];
-int Throttle::brknom;
-int Throttle::brknompedal;
-int Throttle::brkmax;
+s32fp Throttle::brknom;
+s32fp Throttle::brknompedal;
+s32fp Throttle::brkmax;
 int Throttle::idleSpeed;
 int Throttle::cruiseSpeed;
 s32fp Throttle::speedkp;
@@ -34,17 +34,18 @@ int Throttle::speedflt;
 int Throttle::speedFiltered;
 s32fp Throttle::idleThrotLim;
 s32fp Throttle::potnomFiltered;
-int Throttle::throtmax;
-int Throttle::brkPedalRamp;
-int Throttle::brkRamped;
-int Throttle::throttleRamp;
-int Throttle::throttleRamped;
+s32fp Throttle::throtmax;
+s32fp Throttle::brkPedalRamp;
+s32fp Throttle::brkRamped;
+s32fp Throttle::throttleRamp;
+s32fp Throttle::throttleRamped;
 int Throttle::bmslimhigh;
 int Throttle::bmslimlow;
 s32fp Throttle::udcmin;
 s32fp Throttle::udcmax;
 s32fp Throttle::idcmin;
 s32fp Throttle::idcmax;
+s32fp Throttle::fmax;
 
 bool Throttle::CheckAndLimitRange(int* potval, int potIdx)
 {
@@ -99,39 +100,39 @@ s32fp Throttle::CalcThrottle(int potval, int pot2val, bool brkpedal)
 
    if (pot2val > potmin[1])
    {
-      potnom = (100 * (pot2val - potmin[1])) / (potmax[1] - potmin[1]);
+      potnom = (FP_FROMINT(100) * (pot2val - potmin[1])) / (potmax[1] - potmin[1]);
       //Never reach 0, because that can spin up the motor
-      scaledBrkMax = -1 + (scaledBrkMax * potnom) / 100;
+      scaledBrkMax = -1 + FP_MUL(scaledBrkMax, potnom) / 100;
    }
 
-   potnom = FP_FROMINT(potval - potmin[0]);
-   potnom = ((100 + brknom) * potnom) / (potmax[0] - potmin[0]);
-   potnom -= FP_FROMINT(brknom);
-
-   /*if (potnom > 0)
+   if (brkpedal)
    {
-      throttleRamped = RAMPUP(throttleRamped, potnom, throttleRamp);
-      potnom = (throttleRamped * throtmax) / 100;
+      potnom = scaledBrkMax;
    }
    else
    {
-      throttleRamped = 0;
-   }*/
+      potnom = FP_FROMINT(potval - potmin[0]);
+      potnom = FP_MUL((FP_FROMINT(100) + brknom), potnom) / (potmax[0] - potmin[0]);
+      potnom -= brknom;
 
-   if (potnom < 0)
-   {
-      scaledBrkMax = -(potnom * scaledBrkMax) / brknom;
+      if (potnom < 0)
+      {
+         potnom = -FP_DIV(FP_MUL(potnom, scaledBrkMax), brknom);
+      }
    }
 
-   if (brkpedal || potnom < 0)
+   if (potnom > throttleRamped)
    {
-      //brkRamped = RAMPDOWN(brkRamped, scaledBrkMax, brkPedalRamp);
-      potnom = scaledBrkMax;
+      throttleRamped = RAMPUP(throttleRamped, potnom, throttleRamp);
+      potnom = throttleRamped; // FP_MUL(throttleRamped, throtmax) / 100;
    }
-   /*else
+   else
    {
-      brkRamped = MIN(0, potnom); //reset ramp
-   }*/
+      throttleRamped = RAMPDOWN(throttleRamped, potnom, throttleRamp);
+      potnom = throttleRamped; // FP_MUL(throttleRamped, throtmax) / 100;
+   }
+
+   potnom = MIN(potnom, throtmax);
 
    return potnom;
 }
@@ -212,5 +213,17 @@ void Throttle::IdcLimitCommand(s32fp& finalSpnt, s32fp idc)
 
       res = MIN(0, res);
       finalSpnt = MAX(res, finalSpnt);
+   }
+}
+
+void Throttle::FrequencyLimitCommand(s32fp& finalSpnt, s32fp frequency)
+{
+   if (finalSpnt >= 0)
+   {
+      s32fp frqerr = fmax - frequency;
+      s32fp res = frqerr * 10;
+
+      res = MAX(0, res);
+      finalSpnt = MIN(res, finalSpnt);
    }
 }
