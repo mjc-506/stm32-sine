@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define VER 4.33.B
+#define VER 4.34.B
 
 
 /* Entries must be ordered as follows:
@@ -172,7 +172,7 @@
 #define CANIOS       "1=Cruise, 2=Start, 4=Brake, 8=Fwd, 16=Rev, 32=Bms"
 #define CANPERIODS   "0=100ms, 1=10ms"
 #define HWREVS       "0=Rev1, 1=Rev2, 2=Rev3, 3=Tesla"
-#define SWAPS        "1=Currents12, 4=PWMOutput12"
+#define SWAPS        "0=None, 1=Currents12, 2=SinCos, 4=PWMOutput12"
 #define CAT_MOTOR    "Motor"
 #define CAT_INVERTER "Inverter"
 #define CAT_THROTTLE "Throttle"

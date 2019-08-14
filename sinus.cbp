@@ -55,7 +55,7 @@
 		<Unit filename="include/generic/my_string.h" />
 		<Unit filename="include/generic/param_save.h" />
 		<Unit filename="include/generic/params.h" />
-		<Unit filename="include/generic/piregulator.h" />
+		<Unit filename="include/generic/picontroller.h" />
 		<Unit filename="include/generic/printf.h" />
 		<Unit filename="include/generic/sine_core.h" />
 		<Unit filename="include/generic/stm32scheduler.h" />
@@ -84,7 +84,7 @@
 		</Unit>
 		<Unit filename="src/generic/param_save.cpp" />
 		<Unit filename="src/generic/params.cpp" />
-		<Unit filename="src/generic/piregulator.cpp" />
+		<Unit filename="src/generic/picontroller.cpp" />
 		<Unit filename="src/generic/printf.c">
 			<Option compilerVar="CC" />
 		</Unit>
