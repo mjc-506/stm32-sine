@@ -292,8 +292,9 @@ s32fp VehicleControl::ProcessUdc()
    //HW_REV1 had 3.9k resistors
    int uauxGain = hwRev == HW_REV1 ? 289 : 249;
    Param::SetFlt(Param::uaux, FP_DIV(AnaIn::uaux.Get(), uauxGain));
-   udcFiltered = IIRFILTER(udcFiltered, AnaIn::udc.Get(), 2);
-   udcfp = FP_DIV(FP_FROMINT(udcFiltered - udcofs), udcgain);
+   //udcFiltered = IIRFILTER(udcFiltered, AnaIn::udc.Get(), 2);
+   //udcfp = FP_DIV(FP_FROMINT(udcFiltered - udcofs), udcgain);
+   udcfp = (Param::Get(Param::udc));
 
    if (hwRev != HW_TESLAM3)
    {
@@ -346,7 +347,7 @@ s32fp VehicleControl::ProcessUdc()
    }
    #endif // CONTROL
 
-   Param::SetFlt(Param::udc, udcfp);
+   //Param::SetFlt(Param::udc, udcfp);
 
    return udcfp;
 }
