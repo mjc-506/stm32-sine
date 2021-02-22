@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches:
+      -main
+      -release/*
+  pull_request:
+    branches:
+      -main
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v2
+    - name: install gcc arm
+      run: sudo apt-get install git gcc-arm-none-eabi
+    - name: get deps
+      run: make get-deps
+    - name: make
+      run: make
+    - name: make FOC
+      run: CONTROL=FOC make
