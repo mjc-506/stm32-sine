@@ -6,6 +6,7 @@ This is a fork of JHuebner's stm32-sine software for the openinverter hardware. 
 Changes:
 UDC read over CAN
 New parameter to set the encoder offset (for sin/cos chips that don't provide a 1.65V midpoint)
+temphs (inverter heat sink temperature) read over CAN
 
 # stm32-sine
 Main firmware of the Huebner inverter project
