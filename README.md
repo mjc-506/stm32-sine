@@ -3,6 +3,10 @@
 # mjc506 edits
 This is a fork of JHuebner's stm32-sine software for the openinverter hardware. Edits have been made to allow setting udc over CAN, plus others to suit motorcycle platform.
 
+Changes:
+UDC read over CAN
+New parameter to set the encoder offset (for sin/cos chips that don't provide a 1.65V midpoint)
+
 # stm32-sine
 Main firmware of the Huebner inverter project
 This firmware runs on any revision of the "Huebner" hardware https://github.com/jsphuebner/inverter-hardware as well as any derivatives as the Open Source Tesla controller https://github.com/damienmaguire
