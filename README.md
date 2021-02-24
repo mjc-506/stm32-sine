@@ -4,9 +4,15 @@
 This is a fork of JHuebner's stm32-sine software for the openinverter hardware. Edits have been made to allow setting udc over CAN, plus others to suit motorcycle platform.
 
 Changes:
-UDC read over CAN
-New parameter to set the encoder offset (for sin/cos chips that don't provide a 1.65V midpoint)
-temphs (inverter heat sink temperature) read over CAN
+* UDC read over CAN
+* New parameter to set the encoder offset (for sin/cos chips that don't provide a 1.65V midpoint)
+* temphs (inverter heat sink temperature) read over CAN
+
+Additional changes to come:
+* Read Idc over CAN? We do have a DC current sensor, although the internal Idc calculations are improving.
+* Adjust the MPTA algorithm to suit the alternator motor hardware (not an IPMSM) - Id should be zero up to base speed on a PMSM, and even above that, it would be more efficient to reduce field current than to 'fight' it with field weakening.
+* 'Walk' mode - probably easiest to drive this over CAN, but will still need tweaks to allow cruise in reverse.
+* Perhaps drive field current from the 'user PWM' pin? Perhaps use the unused 'udc' pin as a field current sensor input? Would need to work out an 'optimum' field current based on rpm and throttle etc...
 
 # stm32-sine
 Main firmware of the Huebner inverter project
