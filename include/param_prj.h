@@ -24,7 +24,7 @@
    2. Temporary parameters (id = 0)
    3. Display values
  */
-//Next param id (increase when adding new parameter!): 132
+//Next param id (increase when adding new parameter!): 133
 //Next value Id: 2048
 /*              category     name         unit       min     max     default id */
 
@@ -53,7 +53,8 @@
     PARAM_ENTRY(CAT_MOTOR,   curki,       "",        0,      100000, 20000,  108 ) \
     PARAM_ENTRY(CAT_MOTOR,   curkifrqgain,"dig/Hz",  0,      1000,   50,     120 ) \
     PARAM_ENTRY(CAT_MOTOR,   fwkp,        "",        -10000, 0,      -100,   118 ) \
-    PARAM_ENTRY(CAT_MOTOR,   syncofs,     "dig",     0,      65535,  0,      70  )
+    PARAM_ENTRY(CAT_MOTOR,   syncofs,     "dig",     0,      65535,  0,      70  ) \
+    PARAM_ENTRY(CAT_MOTOR,   pmsmtype,    PMSM_TYPE, 0,      1,      0,      132 )
 
 #define INVERTER_PARAMETERS_COMMON \
     PARAM_ENTRY(CAT_INVERTER,pwmfrq,      PWMFRQS,   0,      2,      1,      13  ) \
@@ -255,6 +256,7 @@
 #define HWREVS       "0=Rev1, 1=Rev2, 2=Rev3, 3=Tesla, 4=TeslaM3, 5=BluePill, 6=Prius, 7=PriusMG1"
 #define SWAPS        "0=None, 1=Currents12, 2=SinCos, 4=PWMOutput13, 8=PWMOutput23"
 #define STATUS       "0=None, 1=UdcLow, 2=UdcHigh, 4=UdcBelowUdcSw, 8=UdcLim, 16=EmcyStop, 32=MProt, 64=PotPressed, 128=TmpHs, 256=WaitStart"
+#define PMSM_TYPE    "0=IPMSM, 1=SPMSM"
 #define CAT_MOTOR    "Motor"
 #define CAT_INVERTER "Inverter"
 #define CAT_THROTTLE "Throttle"

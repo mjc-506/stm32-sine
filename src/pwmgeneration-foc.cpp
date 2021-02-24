@@ -131,6 +131,7 @@ void PwmGeneration::SetTorquePercent(s32fp torquePercent)
    s32fp brkrampstr = Param::Get(Param::brkrampstr);
    int direction = Param::GetInt(Param::dir);
    int heatCur = Param::GetInt(Param::heatcur);
+   int motorType = Param::GetInt(Param::pmsmtype); //0 is IPMSM, 1 is SPMSM
 
    heatCur = MIN(400, heatCur);
 
@@ -163,13 +164,29 @@ void PwmGeneration::SetTorquePercent(s32fp torquePercent)
       }*/
       else
       {
-         FOC::Mtpa(is, id, iq);
+         switch (motorType)
+         {
+         case 1:
+            id = 0;
+            iq = is;
+            break;
+         default: //default to MTPA and IPMSM - works ok with any?(?) PMSM
+            FOC::Mtpa(is, id, iq);
+         }
          heatCurRamped = 0;
       }
    }
    else
    {
-      FOC::Mtpa(is, id, iq);
+      switch (motorType)
+      {
+      case 1:
+         id = 0;
+         iq = is;
+         break;
+      default: //default to MTPA and IPMSM - works ok with any?(?) PMSM
+         FOC::Mtpa(is, id, iq);
+      }
       heatCurRamped = 0;
    }
 
