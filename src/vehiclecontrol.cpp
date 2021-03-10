@@ -440,6 +440,7 @@ void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
       else
       {
          //tmphs = TempMeas::Lookup(tmphsi, snshs);
+         tmphs = Param::Get(Param::tmphs);
       }
    }
 }
