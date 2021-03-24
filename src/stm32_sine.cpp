@@ -125,7 +125,10 @@ static void Ms10Task(void)
       PwmGeneration::SetChargeCurrent(chargeCurRamped);
    }
 
-   stt |= DigIo::emcystop_in.Get() ? STAT_NONE : STAT_EMCYSTOP;
+   if (hwRev != HW_REV3)
+   {
+       stt |= DigIo::emcystop_in.Get() ? STAT_NONE : STAT_EMCYSTOP; //don't set EMCYSTOP on hwrev3
+   }
    stt |= DigIo::mprot_in.Get() ? STAT_NONE : STAT_MPROT;
    stt |= Param::GetInt(Param::potnom) <= 0 ? STAT_NONE : STAT_POTPRESSED;
    stt |= udc >= Param::Get(Param::udcsw) ? STAT_NONE : STAT_UDCBELOWUDCSW;
