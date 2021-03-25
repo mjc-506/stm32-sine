@@ -80,25 +80,21 @@ s32fp Throttle::DigitsToPercent(int potval, int potidx)
 
 s32fp Throttle::CalcThrottle(s32fp potnom, s32fp pot2nom, bool brkpedal)
 {
-   s32fp scaledBrkMax = brkpedal ? brknompedal : brkmax;
-
-   //Never reach 0, because that can spin up the motor
-   scaledBrkMax = -1 + FP_MUL(scaledBrkMax, pot2nom) / 100;
-
    if (brkpedal)
    {
-      potnom = scaledBrkMax;
+      potnom = 0; //ignore throttle
    }
-   else if (potnom < brknom)
+
+   if (potnom < brknom)
    {
-      potnom -= brknom;
-      potnom = -FP_DIV(FP_MUL(potnom, scaledBrkMax), brknom);
+      potnom = FP_DIV(FP_DIV(FP_MUL((brknom - potnom), brknompedal), 100), brknom);
    }
    else
    {
-      potnom -= brknom;
-      potnom = FP_DIV(100 * potnom, FP_FROMINT(100) - brknom);
+      potnom = FP_DIV(potnom-brknom, FP_FROMINT(100)-brknom);
    }
+
+   potnom = (FP_MUL(pot2nom, brkmax) / 100) + (FP_MUL( (FP_FROMINT(100) - pot2nom), potnom));
 
    return potnom;
 }
