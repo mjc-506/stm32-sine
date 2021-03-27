@@ -35,6 +35,7 @@
 
 Can* VehicleControl::can;
 bool VehicleControl::lastCruiseSwitchState = false;
+bool walkmode = false;
 bool VehicleControl::canIoActive = false;
 int VehicleControl::temphsFiltered = 0;
 int VehicleControl::tempmFiltered = 0;
@@ -83,6 +84,19 @@ void VehicleControl::CruiseControl()
       {
          Throttle::cruiseSpeed = Param::GetInt(Param::cruisespeed);
       }
+   }
+
+   //Walk mode
+   if ((Param::GetBool(Param::din_forward) || Param::GetBool(Param::din_reverse)) && ((int)Encoder::GetSpeed() < Param::GetInt(Param::dirchrpm)))
+   {
+      Throttle::cruiseSpeed = Throttle::idleSpeed + 1;
+      walkmode = true;
+   }
+
+   //Stop walk mode when button released
+   if (!Param::GetBool(Param::din_forward) && !Param::GetBool(Param::din_reverse) && walkmode)
+   {
+      Throttle::cruiseSpeed = -1;
    }
 
    if (Param::GetInt(Param::cruisemode) != CRUISE_CAN)
