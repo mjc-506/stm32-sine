@@ -8,10 +8,12 @@ Changes:
 * New parameter to set the encoder offset (for sin/cos chips that don't provide a 1.65V midpoint)
 * temphs (inverter heat sink temperature) read over CAN
 * Adjust the MPTA algorithm to suit the alternator motor hardware (not an IPMSM) - Id should be zero up to base speed on a PMSM, and even above that, it would be more efficient to reduce field current than to 'fight' it with field weakening. A new parameter has been added to select either IPMSM (Id =/= 0) or SPMSM (Id = 0).
+* 'Walk mode' - push a button and the motor will turn at a set (low) speed, making it easier to push the bike. I've used the fwd and rev input, which will otherwise be unused. Works by setting cruise speed to the idlespeed parameter (+1 to satisfy other checks) when either forward or reverse is pressed - the stock direction control functions handle setting forward and reverse. Can be disabled by setting idlespeed negative.
+* Removed the EMCYSTOP setting - the pin is labelled as 'reserved' on the rev3 hardware, but leaving it floating still prevents the inverter from starting with the button.
+* Changed the mapping from throttle and brake analogue inputs to potnom - the stock firmware essentially relies on a brake switch and having brknom set so that there is some 'engine braking' with throttle released (neither desired on this platform). The new mapping mixes throttle and brake inputs such that full brake always results in full braking, no matter throttle inputs
 
 Additional changes to come:
 * Read Idc over CAN? We do have a DC current sensor, although the internal Idc calculations are improving.
-* 'Walk' mode - probably easiest to drive this over CAN, but will still need tweaks to allow cruise in reverse.
 * Perhaps drive field current from the 'user PWM' pin? Perhaps use the unused 'udc' pin as a field current sensor input? Would need to work out an 'optimum' field current based on rpm and throttle etc...
 
 # stm32-sine
