@@ -80,10 +80,10 @@ s32fp Throttle::DigitsToPercent(int potval, int potidx)
 
 s32fp Throttle::CalcThrottle(s32fp potnom, s32fp pot2nom, bool brkpedal)
 {
-   if (brkpedal)
-   {
-      potnom = 0; //ignore throttle
-   }
+//   if (brkpedal)
+//   {
+//      potnom = 0; //ignore throttle
+//   }
 
    if (potnom < brknom)
    {
