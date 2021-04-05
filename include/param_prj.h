@@ -25,7 +25,7 @@
    3. Display values
  */
 //Next param id (increase when adding new parameter!): 133
-//Next value Id: 2048
+//Next value Id: 2050
 /*              category     name         unit       min     max     default id */
 
 #define MOTOR_PARAMETERS_COMMON \
@@ -156,6 +156,8 @@
     VALUE_ENTRY(speed,       "rpm",   2012 ) \
     VALUE_ENTRY(cruisespeed, "rpm",   2041 ) \
     VALUE_ENTRY(turns,       "",      2037 ) \
+    VALUE_ENTRY(sin,         "dig",   2048 ) \
+    VALUE_ENTRY(cos,         "dig",   2049 ) \
     VALUE_ENTRY(amp,         "dig",   2013 ) \
     VALUE_ENTRY(angle,       "°",     2014 ) \
     VALUE_ENTRY(pot,         "dig",   2015 ) \

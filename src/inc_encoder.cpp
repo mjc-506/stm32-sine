@@ -550,6 +550,8 @@ uint16_t Encoder::DecodeAngle(bool invert)
 {
    int sin = adc_read_injected(ADC1, sinChan);
    int cos = adc_read_injected(ADC1, cosChan);
+   Param::SetInt(Param::sin, sin);
+   Param::SetInt(Param::cos, cos);
 
    //Wait for signal to reach usable amplitude
    if ((resolverMax - resolverMin) > MIN_RES_AMP)
