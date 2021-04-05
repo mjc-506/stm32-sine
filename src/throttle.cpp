@@ -96,6 +96,11 @@ s32fp Throttle::CalcThrottle(s32fp potnom, s32fp pot2nom, bool brkpedal)
 
    potnom = (FP_MUL(pot2nom, brkmax) / 100) + (FP_MUL( (FP_FROMINT(100) - pot2nom), potnom));
 
+   if (potnom < FP_FROMINT(Param::GetInt(Param::brkout))) //set din_brake with sufficient regen? or just wire brkout to brkin?
+   {
+      Param::SetInt(Param::din_brake, true);
+   }
+
    return potnom;
 }
 
