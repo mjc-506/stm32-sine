@@ -41,6 +41,11 @@
 #define FRQ_TO_PSC(frq) ((72000000 / frq) - 1)
 #define NUM_ENCODER_CONFIGS (sizeof(encoderConfigurations) / sizeof(encoderConfigurations[0]))
 
+//TI encoder observer stuff
+//float angle_last = 0; //angle_last = integrator2
+static volatile int32_t integrator1 = 0;
+static volatile int32_t integrator2 = 0;
+
 typedef struct EncoderConfiguration
 {
    uint32_t pulseMeasFrequency;
@@ -550,15 +555,51 @@ uint16_t Encoder::DecodeAngle(bool invert)
 {
    int sin = adc_read_injected(ADC1, sinChan);
    int cos = adc_read_injected(ADC1, cosChan);
-   Param::SetInt(Param::sin, sin);
+   Param::SetInt(Param::sin, sin); //spit out for debugging
    Param::SetInt(Param::cos, cos);
 
    //Wait for signal to reach usable amplitude
    if ((resolverMax - resolverMin) > MIN_RES_AMP)
    {
+//      if (invert)
+//         return SineCore::Atan2(-sin, -cos);
+//      return SineCore::Atan2(sin, cos);
       if (invert)
-         return SineCore::Atan2(-sin, -cos);
-      return SineCore::Atan2(sin, cos);
+      {
+         sin = -sin;
+         cos = -cos;
+      }
+      uint16_t angleatan = SineCore::Atan2(sin, cos);
+      Param::SetFlt(Param::angleatan, FP_FROMINT(angleatan) / (65536 / 360)); //original atan2 angle calculation
+
+      //TI observer based implementation
+      uint16_t K1 = Param::GetInt(Param::encK1);
+      uint16_t K2 = Param::GetInt(Param::encK2);
+      uint16_t frequency = 8000;// hz?
+      uint16_t offset = 16384;
+      int32_t cos_sin_anglast = cos*SineCore::Sine(integrator2)/32767; //angle_last = integrator2
+      int32_t sin_cos_anglast = sin*SineCore::Cosine(integrator2)/32767;
+      int32_t sum_one = sin_cos_anglast - cos_sin_anglast;
+      integrator1 += sum_one*K2/frequency;
+      int32_t gain1 = sum_one*K1;
+      int32_t sum_two = integrator1 + gain1;
+      integrator2 += sum_two/frequency;
+      int32_t sample_delay_comp = integrator1/(2*frequency);
+      //angle_last = integrator2;
+      uint16_t obs_angle = sample_delay_comp-integrator2+offset; //digits, 2pi rad = 360 deg = 65536 digits
+      Param::SetInt(Param::sum1, sum_one);
+      Param::SetInt(Param::sum2, sum_two);
+      Param::SetInt(Param::integ1, integrator1);
+      Param::SetInt(Param::integ2, integrator2);
+      Param::SetFlt(Param::angleobs, FP_FROMINT(obs_angle) / (65536 / 360));
+      if (Param::GetInt(Param::anglemode) == 1) //TI observer mode
+      {
+         return obs_angle;
+      }
+      else
+      {
+         return angleatan;
+      }
    }
    else
    {

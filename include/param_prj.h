@@ -17,15 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define VER 5.03.R
+#define VER 5.03.enc_observer
 
 /* Entries must be ordered as follows:
    1. Saveable parameters (id != 0)
    2. Temporary parameters (id = 0)
    3. Display values
  */
-//Next param id (increase when adding new parameter!): 133
-//Next value Id: 2050
+//Next param id (increase when adding new parameter!): 136
+//Next value Id: 2056
 /*              category     name         unit       min     max     default id */
 
 #define MOTOR_PARAMETERS_COMMON \
@@ -33,6 +33,9 @@
     PARAM_ENTRY(CAT_MOTOR,   respolepairs,"",        1,      16,     1,      93  ) \
     PARAM_ENTRY(CAT_MOTOR,   sincosofs,   "dig",     1,      4096,   2048,   131 ) \
     PARAM_ENTRY(CAT_MOTOR,   encmode,     ENCMODES,  0,      5,      0,      75  ) \
+    PARAM_ENTRY(CAT_MOTOR,   anglemode,   ANGMODES,  0,      1,      0,      135 ) \
+    PARAM_ENTRY(CAT_MOTOR,   encK1,       "dig" ,    0,      100000, 550,    133 ) \
+    PARAM_ENTRY(CAT_MOTOR,   encK2,       "dig",     0,      100000, 80000,  134 ) \
     PARAM_ENTRY(CAT_MOTOR,   fmax,        "Hz",      21,     2000,   200,    9   ) \
     PARAM_ENTRY(CAT_MOTOR,   numimp,      "ppr",     8,      8192,   60,     15  ) \
     PARAM_ENTRY(CAT_MOTOR,   dirchrpm,    "rpm",     0,      20000,  100,    87  ) \
@@ -160,6 +163,12 @@
     VALUE_ENTRY(cos,         "dig",   2049 ) \
     VALUE_ENTRY(amp,         "dig",   2013 ) \
     VALUE_ENTRY(angle,       "°",     2014 ) \
+    VALUE_ENTRY(angleatan,   "°",     2050 ) \
+    VALUE_ENTRY(angleobs,    "°",     2055 ) \
+    VALUE_ENTRY(sum1,        "dig",   2051 ) \
+    VALUE_ENTRY(sum2,        "dig",   2052 ) \
+    VALUE_ENTRY(integ1,      "dig",   2053 ) \
+    VALUE_ENTRY(integ2,      "dig",   2054 ) \
     VALUE_ENTRY(pot,         "dig",   2015 ) \
     VALUE_ENTRY(pot2,        "dig",   2016 ) \
     VALUE_ENTRY(potnom,      "%",     2017 ) \
@@ -251,6 +260,7 @@
 #define OKERR        "0=Error, 1=Ok, 2=na"
 #define CHARGEMODS   "0=Off, 3=Boost, 4=Buck"
 #define ENCMODES     "0=Single, 1=AB, 2=ABZ, 3=SPI, 4=Resolver, 5=SinCos"
+#define ANGMODES     "0=atan2, 1=TIobserver"
 #define POTMODES     "0=SingleRegen, 1=DualChannel, 2=CAN, 3=CANDual"
 #define CANSPEEDS    "0=250k, 1=500k, 2=800k, 3=1M"
 #define CANIOS       "1=Cruise, 2=Start, 4=Brake, 8=Fwd, 16=Rev, 32=Bms"
