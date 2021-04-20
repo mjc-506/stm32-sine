@@ -254,7 +254,10 @@ void Encoder::UpdateRotorFrequency(int callingFrequency)
       int absTurns = ABS(turnsSinceLastSample);
       if (startupDelay == 0 && absTurns > STABLE_ANGLE)
       {
-         lastFrequency = (callingFrequency * absTurns) / FP_TOINT(TWO_PI);
+         if (encMode == SPI)
+         {
+            lastFrequency = (callingFrequency * absTurns) / FP_TOINT(TWO_PI);
+         }
          detectedDirection = turnsSinceLastSample > 0 ? 1 : -1;
       }
       else
@@ -576,7 +579,6 @@ uint16_t Encoder::DecodeAngle(bool invert)
       uint16_t K1 = Param::GetInt(Param::encK1);
       uint16_t K2 = Param::GetInt(Param::encK2);
       uint16_t frequency = 8000;// hz?
-      uint16_t offset = 16384;
       int32_t cos_sin_anglast = cos*SineCore::Sine(integrator2)/32767; //angle_last = integrator2
       int32_t sin_cos_anglast = sin*SineCore::Cosine(integrator2)/32767;
       int32_t sum_one = sin_cos_anglast - cos_sin_anglast;
@@ -586,12 +588,9 @@ uint16_t Encoder::DecodeAngle(bool invert)
       integrator2 += sum_two/frequency;
       int32_t sample_delay_comp = integrator1/(2*frequency);
       //angle_last = integrator2;
-      uint16_t obs_angle = sample_delay_comp-integrator2+offset; //digits, 2pi rad = 360 deg = 65536 digits
-      Param::SetInt(Param::sum1, sum_one);
-      Param::SetInt(Param::sum2, sum_two);
-      Param::SetInt(Param::integ1, integrator1);
-      Param::SetInt(Param::integ2, integrator2);
+      uint16_t obs_angle = sample_delay_comp-integrator2+16384; //digits, 2pi rad = 360 deg = 65536 digits
       Param::SetFlt(Param::angleobs, FP_FROMINT(obs_angle) / (65536 / 360));
+      lastFrequency = FP_FROMINT(integrator1)/TWO_PI;
       if (Param::GetInt(Param::anglemode) == 1) //TI observer mode
       {
          return obs_angle;

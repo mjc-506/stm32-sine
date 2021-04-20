@@ -25,7 +25,7 @@
    3. Display values
  */
 //Next param id (increase when adding new parameter!): 136
-//Next value Id: 2056
+//Next value Id: 2052
 /*              category     name         unit       min     max     default id */
 
 #define MOTOR_PARAMETERS_COMMON \
@@ -164,11 +164,7 @@
     VALUE_ENTRY(amp,         "dig",   2013 ) \
     VALUE_ENTRY(angle,       "°",     2014 ) \
     VALUE_ENTRY(angleatan,   "°",     2050 ) \
-    VALUE_ENTRY(angleobs,    "°",     2055 ) \
-    VALUE_ENTRY(sum1,        "dig",   2051 ) \
-    VALUE_ENTRY(sum2,        "dig",   2052 ) \
-    VALUE_ENTRY(integ1,      "dig",   2053 ) \
-    VALUE_ENTRY(integ2,      "dig",   2054 ) \
+    VALUE_ENTRY(angleobs,    "°",     2051 ) \
     VALUE_ENTRY(pot,         "dig",   2015 ) \
     VALUE_ENTRY(pot2,        "dig",   2016 ) \
     VALUE_ENTRY(potnom,      "%",     2017 ) \
