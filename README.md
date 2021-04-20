@@ -11,6 +11,7 @@ Changes:
 * 'Walk mode' - push a button and the motor will turn at a set (low) speed, making it easier to push the bike. I've used the fwd and rev input, which will otherwise be unused. Works by setting cruise speed to the idlespeed parameter (+1 to satisfy other checks) when either forward or reverse is pressed - the stock direction control functions handle setting forward and reverse. Can be disabled by setting idlespeed negative.
 * Removed the EMCYSTOP setting - the pin is labelled as 'reserved' on the rev3 hardware, but leaving it floating still prevents the inverter from starting with the button.
 * Changed the mapping from throttle and brake analogue inputs to potnom - the stock firmware essentially relies on a brake switch and having brknom set so that there is some 'engine braking' with throttle released (neither desired on this platform). The new mapping mixes throttle and brake inputs such that full brake always results in full braking, no matter throttle inputs
+* Implemented TI angle observer code to replace the current atan2 rotor angle calculation - much improved noise immunity which should hopefully help low speed running. Also outputs speed at better quality than the current turns/second code. PR to upstream for this.
 
 Additional changes to come:
 * Read Idc over CAN? We do have a DC current sensor, although the internal Idc calculations are improving.
