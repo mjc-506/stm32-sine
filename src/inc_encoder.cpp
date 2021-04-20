@@ -564,41 +564,24 @@ uint16_t Encoder::DecodeAngle(bool invert)
    //Wait for signal to reach usable amplitude
    if ((resolverMax - resolverMin) > MIN_RES_AMP)
    {
-//      if (invert)
-//         return SineCore::Atan2(-sin, -cos);
-//      return SineCore::Atan2(sin, cos);
       if (invert)
       {
          sin = -sin;
          cos = -cos;
       }
-      uint16_t angleatan = SineCore::Atan2(sin, cos);
-      Param::SetFlt(Param::angleatan, FP_FROMINT(angleatan) / (65536 / 360)); //original atan2 angle calculation
 
       //TI observer based implementation
-      uint16_t K1 = Param::GetInt(Param::encK1);
-      uint16_t K2 = Param::GetInt(Param::encK2);
-      uint16_t frequency = 8000;// hz?
       int32_t cos_sin_anglast = cos*SineCore::Sine(integrator2)/32767; //angle_last = integrator2
       int32_t sin_cos_anglast = sin*SineCore::Cosine(integrator2)/32767;
       int32_t sum_one = sin_cos_anglast - cos_sin_anglast;
-      integrator1 += sum_one*K2/frequency;
-      int32_t gain1 = sum_one*K1;
+      integrator1 += sum_one*1000; //K2/frequency
+      int32_t gain1 = sum_one*550; //K1
       int32_t sum_two = integrator1 + gain1;
-      integrator2 += sum_two/frequency;
-      int32_t sample_delay_comp = integrator1/(2*frequency);
-      //angle_last = integrator2;
+      integrator2 += sum_two/8000; //frequency
+      int32_t sample_delay_comp = integrator1/16000; //2*frequency
       uint16_t obs_angle = sample_delay_comp-integrator2+16384; //digits, 2pi rad = 360 deg = 65536 digits
-      Param::SetFlt(Param::angleobs, FP_FROMINT(obs_angle) / (65536 / 360));
       lastFrequency = ABS(FP_FROMINT(integrator1)/TWO_PI);
-      if (Param::GetInt(Param::anglemode) == 1) //TI observer mode
-      {
-         return obs_angle;
-      }
-      else
-      {
-         return angleatan;
-      }
+      return obs_angle;
    }
    else
    {

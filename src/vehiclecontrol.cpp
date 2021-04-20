@@ -297,17 +297,13 @@ s32fp VehicleControl::ProcessUdc()
    s32fp udcmin = Param::Get(Param::udcmin);
    s32fp udcmax = Param::Get(Param::udcmax);
    s32fp udclim = Param::Get(Param::udclim);
-   s32fp udcgain = Param::Get(Param::udcgain);
    s32fp udcsw = Param::Get(Param::udcsw);
-   int udcofs = Param::GetInt(Param::udcofs);
 
    //Calculate "12V" supply voltage from voltage divider on mprot pin
    //1.2/(4.7+1.2)/3.33*4095 = 250 -> make it a bit less for pin losses etc
    //HW_REV1 had 3.9k resistors
    int uauxGain = hwRev == HW_REV1 ? 289 : 249;
    Param::SetFlt(Param::uaux, FP_DIV(AnaIn::uaux.Get(), uauxGain));
-   //udcFiltered = IIRFILTER(udcFiltered, AnaIn::udc.Get(), 2);
-   //udcfp = FP_DIV(FP_FROMINT(udcFiltered - udcofs), udcgain);
    udcfp = (Param::Get(Param::udc));
 
    if (hwRev != HW_TESLAM3)
@@ -427,7 +423,6 @@ void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
    }
    else
    {
-      TempMeas::Sensors snshs = (TempMeas::Sensors)Param::GetInt(Param::snshs);
       TempMeas::Sensors snsm = (TempMeas::Sensors)Param::GetInt(Param::snsm);
 
       int tmphsi = AnaIn::tmphs.Get();
@@ -453,7 +448,6 @@ void VehicleControl::GetTemps(s32fp& tmphs, s32fp &tmpm)
       }
       else
       {
-         //tmphs = TempMeas::Lookup(tmphsi, snshs);
          tmphs = Param::Get(Param::tmphs);
       }
    }
@@ -463,7 +457,6 @@ s32fp VehicleControl::GetUserThrottleCommand()
 {
    s32fp potnom1, potnom2;
    int potval, pot2val;
-   bool brake = Param::GetBool(Param::din_brake);
    int potmode = Param::GetInt(Param::potmode);
 
    if ((potmode & POTMODE_CAN) > 0)
@@ -537,7 +530,7 @@ s32fp VehicleControl::GetUserThrottleCommand()
    if (Param::GetInt(Param::dir) == 0)
       return 0;
 
-   return Throttle::CalcThrottle(potnom1, potnom2, brake);
+   return Throttle::CalcThrottle(potnom1, potnom2);
 }
 
 void VehicleControl::GetCruiseCreepCommand(s32fp& finalSpnt, s32fp throtSpnt)

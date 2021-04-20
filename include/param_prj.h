@@ -24,8 +24,8 @@
    2. Temporary parameters (id = 0)
    3. Display values
  */
-//Next param id (increase when adding new parameter!): 136
-//Next value Id: 2052
+//Next param id (increase when adding new parameter!): 133
+//Next value Id: 2050
 /*              category     name         unit       min     max     default id */
 
 #define MOTOR_PARAMETERS_COMMON \
@@ -33,9 +33,6 @@
     PARAM_ENTRY(CAT_MOTOR,   respolepairs,"",        1,      16,     1,      93  ) \
     PARAM_ENTRY(CAT_MOTOR,   sincosofs,   "dig",     1,      4096,   2048,   131 ) \
     PARAM_ENTRY(CAT_MOTOR,   encmode,     ENCMODES,  0,      5,      0,      75  ) \
-    PARAM_ENTRY(CAT_MOTOR,   anglemode,   ANGMODES,  0,      1,      0,      135 ) \
-    PARAM_ENTRY(CAT_MOTOR,   encK1,       "dig" ,    0,      100000, 550,    133 ) \
-    PARAM_ENTRY(CAT_MOTOR,   encK2,       "dig",     0,      100000, 80000,  134 ) \
     PARAM_ENTRY(CAT_MOTOR,   fmax,        "Hz",      21,     2000,   200,    9   ) \
     PARAM_ENTRY(CAT_MOTOR,   numimp,      "ppr",     8,      8192,   60,     15  ) \
     PARAM_ENTRY(CAT_MOTOR,   dirchrpm,    "rpm",     0,      20000,  100,    87  ) \
@@ -163,8 +160,6 @@
     VALUE_ENTRY(cos,         "dig",   2049 ) \
     VALUE_ENTRY(amp,         "dig",   2013 ) \
     VALUE_ENTRY(angle,       "°",     2014 ) \
-    VALUE_ENTRY(angleatan,   "°",     2050 ) \
-    VALUE_ENTRY(angleobs,    "°",     2051 ) \
     VALUE_ENTRY(pot,         "dig",   2015 ) \
     VALUE_ENTRY(pot2,        "dig",   2016 ) \
     VALUE_ENTRY(potnom,      "%",     2017 ) \

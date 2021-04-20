@@ -78,13 +78,8 @@ s32fp Throttle::DigitsToPercent(int potval, int potidx)
    return (100 * FP_FROMINT(potval - potmin[potidx])) / (potmax[potidx] - potmin[potidx]);
 }
 
-s32fp Throttle::CalcThrottle(s32fp potnom, s32fp pot2nom, bool brkpedal)
+s32fp Throttle::CalcThrottle(s32fp potnom, s32fp pot2nom)
 {
-//   if (brkpedal)
-//   {
-//      potnom = 0; //ignore throttle
-//   }
-
    if (potnom < brknom)
    {
       potnom = FP_DIV(FP_DIV(FP_MUL((brknom - potnom), brknompedal), 100), brknom);

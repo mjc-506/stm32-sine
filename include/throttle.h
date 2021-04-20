@@ -27,7 +27,7 @@ class Throttle
    public:
       static bool CheckAndLimitRange(int* potval, int potIdx);
       static s32fp DigitsToPercent(int potval, int potidx);
-      static s32fp CalcThrottle(s32fp potval, s32fp pot2val, bool brkpedal);
+      static s32fp CalcThrottle(s32fp potval, s32fp pot2val);
       static s32fp CalcIdleSpeed(int speed);
       static s32fp CalcCruiseSpeed(int speed);
       static bool TemperatureDerate(s32fp tmp, s32fp tmpMax, s32fp& finalSpnt);
