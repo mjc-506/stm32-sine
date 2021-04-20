@@ -590,7 +590,7 @@ uint16_t Encoder::DecodeAngle(bool invert)
       //angle_last = integrator2;
       uint16_t obs_angle = sample_delay_comp-integrator2+16384; //digits, 2pi rad = 360 deg = 65536 digits
       Param::SetFlt(Param::angleobs, FP_FROMINT(obs_angle) / (65536 / 360));
-      lastFrequency = FP_FROMINT(integrator1)/TWO_PI;
+      lastFrequency = ABS(FP_FROMINT(integrator1)/TWO_PI);
       if (Param::GetInt(Param::anglemode) == 1) //TI observer mode
       {
          return obs_angle;
